@@ -1,0 +1,56 @@
+%% Component view (simplified): 5 microservices, 3 Kafka topics, one PostgreSQL, Prometheus + Grafana monitoring everything
+flowchart LR
+    PATIENT((Patient))
+    DOC((Doctor))
+    TEAM((Project team))
+    CI["Carbon intensity data<br/>simulated CSV or API"]
+
+    subgraph HOME["Patient home (simulated)"]
+        SIM["device-simulator<br/>replays PhysioNet nights"]
+    end
+
+    subgraph K8S["Kubernetes cluster"]
+        ANA["analysis-service<br/>cleans signals,<br/>detects apnea events"]
+        TRI["ahi-triage-service<br/>AHI, severity, report"]
+        CAR["carbon-scheduler-service<br/>which model, now or later"]
+        DASH["dashboard-service<br/>patients, doctor review, audit"]
+
+        subgraph KAFKA["Kafka"]
+            T1(["raw-signals"])
+            T3(["apnea-events"])
+            T4(["night-results"])
+        end
+
+        DB[("PostgreSQL<br/>one database,<br/>separate tables per service")]
+        KSM["Kubernetes metrics<br/>CPU, memory, pods"]
+
+        subgraph MON["Monitoring"]
+            PROM[("Prometheus")]
+            GRAF["Grafana dashboard<br/>service health, latency, Kafka lag,<br/>database, cluster, CO2"]
+        end
+    end
+
+    PATIENT -->|confirms recording| SIM
+    SIM -.->|REST: list of patients| DASH
+    SIM -->|1 frame per minute| T1
+    T1 --> ANA
+    ANA -.->|REST: which model, now or later?| CAR
+    CI --> CAR
+    ANA -->|events of the night| T3
+    T3 --> TRI
+    TRI --> T4
+    T4 --> DASH
+
+    ANA --- DB
+    TRI --- DB
+    DASH --- DB
+
+    SIM & ANA & TRI & CAR & DASH -.->|/metrics| PROM
+    KAFKA -.->|Kafka exporter| PROM
+    DB -.->|PostgreSQL exporter| PROM
+    KSM -.-> PROM
+    PROM --> GRAF
+
+    DOC -->|reviews and approves| DASH
+    TEAM -->|monitors the system| GRAF
+    DASH -.->|approved report| PATIENT
