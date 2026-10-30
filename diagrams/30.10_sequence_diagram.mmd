@@ -1,0 +1,92 @@
+%% Sequence view – one night, aligned 1:1 with "27.10_B_component flowchart diagram_v2_update".
+%% Same components and the same links (Kafka 3 topics, ZeroMQ for alerts, etcd for the carbon mode,
+%% one PostgreSQL, Prometheus + Grafana). Background colour = type of data being sent:
+%%   grey   = carbon data / carbon mode
+%%   blue   = raw signals          (Kafka topic raw-signals)
+%%   red    = urgent alert         (ZeroMQ)
+%%   orange = apnea events         (Kafka topic apnea-events)
+%%   green  = night results        (Kafka topic night-results)
+%%   yellow = doctor review        (HTTP)
+%%   purple = monitoring metrics
+sequenceDiagram
+    autonumber
+    participant CI as Carbon intensity data<br/>(button / CSV)
+    participant CAR as carbon-scheduler
+    participant ETCD as etcd
+    participant K8S as Kubernetes API
+    participant SIM as device-simulator
+    participant K as Kafka
+    participant DET as apnea-detector
+    participant ALR as alert-service
+    participant TRI as ahi-triage
+    participant DB as PostgreSQL
+    participant DASH as doctor-dashboard
+    actor DOC as Doctor
+    participant PROM as Prometheus
+    participant GRAF as Grafana
+    actor TEAM as Project team
+
+    Note over CI,TEAM: ⬜ carbon · 🟦 raw signals · 🟥 alert · 🟧 apnea events · 🟩 night results · 🟨 doctor review · 🟪 metrics
+
+    %% ---------- GREY: carbon data ----------
+    rect rgb(229, 231, 235)
+    CI->>CAR: Carbon intensity per region
+    CAR->>ETCD: Writes mode (green / dirty)
+    CAR->>K8S: Moves detector pod (node AT / NO / PL)
+    end
+
+    %% ---------- BLUE: raw signals ----------
+    rect rgb(219, 234, 254)
+    loop 1 message per minute (5 patients)
+        SIM->>K: raw-signals: SpO2 + breathing
+    end
+    K->>DET: raw-signals
+    DET->>DET: Clean signals
+    DET->>DB: SQL: save raw night
+    end
+
+    %% ---------- RED: urgent alert ----------
+    rect rgb(254, 215, 215)
+    opt SpO2 below 80 %
+        DET-)ALR: ZeroMQ: urgent alert
+        ALR->>DB: SQL: store alert
+    end
+    end
+
+    %% ---------- GREY: carbon mode ----------
+    rect rgb(229, 231, 235)
+    ETCD-->>DET: Reads mode
+    DET->>DET: green = accurate model / dirty = fast model<br/>+ CO2 (CodeCarbon)
+    end
+
+    %% ---------- ORANGE: apnea events ----------
+    rect rgb(255, 228, 196)
+    DET->>K: apnea-events: events of the night
+    K->>TRI: apnea-events
+    end
+
+    %% ---------- GREEN: night results ----------
+    rect rgb(212, 245, 212)
+    TRI->>TRI: AHI and severity
+    TRI->>DB: SQL: save result
+    TRI->>K: night-results
+    K->>DASH: night-results
+    DASH->>DB: SQL: save result for review
+    end
+
+    %% ---------- YELLOW: doctor review ----------
+    rect rgb(255, 245, 190)
+    DOC->>DASH: HTTP: open dashboard
+    DASH->>DB: SQL: read patients, SpO2, alerts
+    DASH-->>DOC: Patients, SpO2 chart, alerts
+    DOC->>DASH: HTTP: approve / correct
+    DASH->>DB: SQL: save decision + audit log
+    end
+
+    %% ---------- PURPLE: monitoring ----------
+    rect rgb(233, 222, 255)
+    DET-->>PROM: HTTP /metrics (all 6 microservices)
+    K-->>PROM: Kafka exporter (lag)
+    PROM->>GRAF: Metrics
+    TEAM->>GRAF: Monitors health, latency,<br/>Kafka lag, pods, model, CO2
+    end
