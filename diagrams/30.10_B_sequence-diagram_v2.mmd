@@ -1,0 +1,112 @@
+%% Sequence view – one night end to end, covering UC1–UC7.
+%% Same components and links as the component diagram (Kafka 3 topics, ZeroMQ for alerts, etcd for the
+%% carbon mode, one PostgreSQL, Prometheus + Grafana). Background colour = type of data / step:
+%%   grey = carbon mode (UC5) · blue = raw signals (UC1) · red = urgent alert (UC3)
+%%   orange = apnea events (UC2) · green = night results (UC2) · yellow = doctor review (UC4)
+%%   teal = scaling (UC6) · purple = monitoring (UC7)
+sequenceDiagram
+    autonumber
+    participant CI as Carbon intensity data<br/>(button / CSV)
+    participant CAR as carbon-scheduler
+    participant ETCD as etcd
+    participant K8S as Kubernetes API<br/>(+ HPA)
+    participant SIM as device-simulator
+    participant K as Kafka
+    participant DET as apnea-detector
+    participant ALR as alert-service
+    participant TRI as ahi-triage
+    participant DB as PostgreSQL
+    participant DASH as doctor-dashboard
+    actor DOC as Doctor
+    participant PROM as Prometheus
+    participant GRAF as Grafana
+    actor TEAM as Project team
+
+    Note over CI,TEAM: ⬜ carbon UC5 · 🟦 raw signals UC1 · 🟥 alert UC3 · 🟧 apnea events UC2 · 🟩 night results UC2 · 🟨 doctor review UC4 · 🔷 scaling UC6 · 🟪 metrics UC7
+
+    %% ---------- GREY: carbon data (UC5) ----------
+    rect rgb(229, 231, 235)
+    Note over CI,K8S: UC5 – adapt to carbon intensity
+    CI->>CAR: Carbon intensity per region
+    CAR->>ETCD: Writes mode (low_carbon / high_carbon)
+    opt Another region has lower carbon intensity
+        CAR->>K8S: Moves detector pod (node AT / NO / PL)
+    end
+    end
+
+    loop 1 message per minute (5 patients)
+        %% ---------- BLUE: raw signals (UC1) ----------
+        rect rgb(219, 234, 254)
+        SIM->>K: raw-signals: SpO2 + breathing
+        K->>DET: raw-signals
+        DET->>DET: Clean signals
+        DET->>DB: SQL: save raw night
+        end
+
+        %% ---------- RED: urgent alert (UC3) ----------
+        rect rgb(254, 215, 215)
+        opt SpO2 below 80 % (checked every minute, in every carbon mode)
+            DET-)ALR: ZeroMQ: urgent alert
+            ALR->>DB: SQL: store alert
+        end
+        end
+
+        %% ---------- GREY: carbon mode decides the analysis (UC5) ----------
+        rect rgb(229, 231, 235)
+        ETCD-->>DET: Reads mode
+        alt low_carbon
+            DET->>DET: Accurate model + CO2 (CodeCarbon)
+        else high_carbon, 08:00 deadline far
+            DET->>DET: Pause analysis – minutes wait in Kafka
+        else high_carbon, 08:00 deadline close
+            DET->>DET: Fast model + CO2 (CodeCarbon)
+        end
+        end
+
+        %% ---------- ORANGE: apnea events (UC2) ----------
+        rect rgb(255, 228, 196)
+        DET->>K: apnea-events: result of the minute
+        K->>TRI: apnea-events
+        end
+    end
+
+    %% ---------- GREEN: night results (UC2) ----------
+    rect rgb(212, 245, 212)
+    opt Last minute of the night (is_last = true)
+        TRI->>TRI: AHI and severity
+        TRI->>DB: SQL: save result
+        TRI->>K: night-results
+        K->>DASH: night-results
+        DASH->>DASH: Refresh patient list
+    end
+    end
+
+    %% ---------- YELLOW: doctor review (UC4) ----------
+    rect rgb(255, 245, 190)
+    DOC->>DASH: HTTP: open dashboard
+    DASH->>DB: SQL: read patients, SpO2, alerts
+    DASH-->>DOC: Patients, SpO2 chart, alerts
+    alt Doctor agrees
+        DOC->>DASH: HTTP: approve
+    else Doctor disagrees
+        DOC->>DASH: HTTP: correct severity
+    end
+    DASH->>DB: SQL: save decision + audit log
+    end
+
+    %% ---------- TEAL: scaling (UC6) ----------
+    rect rgb(204, 240, 236)
+    Note over K8S,DET: UC6 – scale under load
+    SIM->>K: Burst: many nights at once
+    K8S->>DET: HPA: CPU high → scale apnea-detector 1 → 3 pods
+    K->>DET: 3 partitions of raw-signals shared by the 3 pods
+    K8S->>DET: Load low again → scale 3 → 1 pod
+    end
+
+    %% ---------- PURPLE: monitoring (UC7) ----------
+    rect rgb(233, 222, 255)
+    DET-->>PROM: HTTP /metrics (all 6 microservices)
+    K-->>PROM: Kafka exporter (lag)
+    PROM->>GRAF: Metrics
+    TEAM->>GRAF: Monitors health, latency,<br/>Kafka lag, pods, model, CO2
+    end
