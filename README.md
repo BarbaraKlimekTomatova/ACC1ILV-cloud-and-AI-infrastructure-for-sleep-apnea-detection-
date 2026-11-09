@@ -96,6 +96,7 @@ The night comes in minute by minute: the apnea-detector checks every minute for 
 ADR/        architecture decision records (in the order we made them)
 diagrams/   component, data/message model and sequence diagrams (.mmd source, .png, .md to zoom)
 doc/        project summary (PDF)
+requirements.txt   pinned Python libraries for all services (see below)
 ```
 
 Older diagram versions (`24.10_A_…_v1`, `27.10_B_…_v2`, `30.10_sequence_diagram`) are kept to show how the design changed; the `30.10_B_*` files are the current ones.
@@ -103,3 +104,31 @@ Older diagram versions (`24.10_A_…_v1`, `27.10_B_…_v2`, `30.10_sequence_diag
 ## Status
 
 Design phase: use cases, architecture, data model and decisions are done. Next: Kafka locally (docker-compose), then the services.
+
+---
+
+## Getting started – Python virtual environment
+
+All services are written in Python 3.11+. The libraries they need (Kafka, PostgreSQL, ZeroMQ, etcd, Kubernetes API, Prometheus metrics, CodeCarbon, scikit-learn, FastAPI, pytest) are pinned in [`requirements.txt`](requirements.txt), so we both work with the same versions. Kafka, PostgreSQL, etcd, Prometheus and Grafana themselves run as containers in the cluster, not in the venv.
+
+Create the virtual environment once, from the repository root:
+
+**Windows (PowerShell)**
+
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+If PowerShell blocks the script, run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once.
+
+**macOS / Linux**
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+Next time, only activate it again (second line). `(.venv)` in front of the prompt shows it is active; `deactivate` leaves it. Check the install with `python -c "import confluent_kafka; print(confluent_kafka.version())"`. The `.venv/` folder is not committed; when a library is added, pin it in `requirements.txt` and run `pip install -r requirements.txt` again.
