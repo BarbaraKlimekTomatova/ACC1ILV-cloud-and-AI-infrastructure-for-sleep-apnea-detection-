@@ -15,21 +15,31 @@ Team: Barbara Klimek Tomatova, Aliénor Franck de Préaumont
 
 **Why we chose this topic.** It is a real medical problem and easy to explain. The night analysis is not urgent, it only has to be ready by 08:00 in the morning. So the system can wait for electricity with lower CO₂ and choose between a fast and an accurate model. Alerts are the exception and always run immediately.
 
-**Out of scope:** login for patients and doctors, history over several nights, sending reports to patients, therapy monitoring.
+**Out of scope:** login for patients and doctors, sending reports to patients, therapy monitoring.
 
 ---
 
 ## Use cases
 
+The actors are outside our system: the home device, the doctor, the external carbon intensity source and our team as operators. The carbon scheduler and Kubernetes are parts of the system, so they are not actors.
+
 | # | Use case | Actor | Description |
 | --- | --- | --- | --- |
-| UC1 | Send night data | Device (simulator) | The simulator sends the SpO₂ and breathing data of a night minute by minute over Kafka. The raw night is saved in the database. |
-| UC2 | Analyse a night | System | The system finds apnea events with the fast or the accurate model (depending on the carbon mode), calculates the AHI and severity and saves the result. It also measures how much CO₂ the analysis used. |
-| UC3 | Raise an alert | System, doctor | If SpO₂ goes below 80 %, an alert shows up on the doctor dashboard right away. Alerts never wait. |
-| UC4 | Review a result | Doctor | The doctor sees the patients sorted by severity, opens a report with the SpO₂ chart and approves or corrects the result. Every decision is logged. |
-| UC5 | Adapt to carbon intensity | Carbon scheduler | With high carbon intensity (simulated), the analysis waits for cleaner electricity but is done before 08:00; close to the deadline it uses the fast model. It can also move to a node in a cleaner (simulated) region. With low carbon intensity, the accurate model is used. |
-| UC6 | Scale under load | Kubernetes | When a lot of nights come in at the same time, Kubernetes starts more apnea-detector instances and removes them again later. |
-| UC7 | Monitor the system | Team (developers) | A dashboard shows response times, running instances, which model was used and how much CO₂ each analysis needed. |
+| UC1 | Upload night recording | Home device (simulated) | The device sends the SpO₂ and breathing data of a night minute by minute. Each patient sends several nights. The raw night is saved. |
+| UC2 | Screen night | Carbon intensity source (secondary) | The system finds apnea events, calculates the AHI and severity and saves the result. The carbon mode decides when the analysis runs (before 08:00) and if the fast or the accurate model is used. The CO₂ of each analysis is measured. |
+| UC3 | Raise urgent alert – `<<extend>>` UC2 | Doctor | Only when SpO₂ goes below 80 %: the doctor gets an alert right away. Alerts never wait for low-carbon electricity. |
+| UC4 | Review & approve result | Doctor | The doctor sees the patients sorted by severity, opens a report with the SpO₂ chart and the AHI trend over the patient's previous nights, and approves or corrects the result. Every decision is logged. |
+| UC5 | Adapt to carbon intensity | Carbon intensity source | When the (simulated) carbon intensity changes, the system changes its behaviour: it delays the analysis, switches between the fast and the accurate model, lowers the maximum number of detector pods and moves the detector to a node in a cleaner (simulated) region (AT / NO / PL). |
+| UC6 | Monitor system & footprint | Operator / Team | The team sees the system health (latency, Kafka lag, pods) and the AI behaviour (model used, confidence, events per hour, CO₂ per night). It gets a warning when the model drifts or its confidence drops. |
+| UC7 | Retrain model | Operator / Team, Carbon intensity source | The team starts a new training of the AI model. The training runs only in a low-carbon window, the new model version is used only if its F1 score is above our threshold. |
+
+**Non-functional requirements**
+
+- **Scalability:** when many nights arrive at the same time, Kubernetes scales the apnea-detector from 1 to 3 pods and back (this was UC6 "Scale under load" before; it is a quality requirement, not a use case).
+- **Alert latency:** an urgent alert reaches the doctor within 5 seconds, in every carbon mode.
+- **Deadline:** every night is analysed before 08:00.
+- **No data loss:** a night is not lost when a service or one Kafka broker stops.
+- **Measured footprint:** the CO₂ of every analysis and training is measured with CodeCarbon (only the energy inside the containers).
 
 ---
 
