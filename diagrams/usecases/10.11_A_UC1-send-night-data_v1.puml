@@ -1,54 +1,41 @@
 @startuml UC1
 skinparam shadowing false
 skinparam defaultFontName Arial
-skinparam defaultFontSize 13
+skinparam defaultFontSize 15
 skinparam sequenceMessageAlign center
-skinparam responseMessageBelowArrow true
-skinparam BoxPadding 10
 skinparam sequence {
-  LifeLineBorderColor #888888
-  ParticipantBorderColor #555555
+  LifeLineBorderColor #BBBBBB
+  ParticipantBorderColor #666666
   ParticipantBackgroundColor #FFFFFF
-  ActorBorderColor #555555
+  ActorBorderColor #666666
   ActorBackgroundColor #FFFFFF
-  GroupBorderColor #777777
-  GroupHeaderFontColor #333333
+  GroupBorderColor #999999
 }
 skinparam database {
-  BorderColor #555555
+  BorderColor #666666
   BackgroundColor #FFFFFF
 }
 skinparam queue {
-  BorderColor #555555
+  BorderColor #666666
   BackgroundColor #FFFFFF
 }
 skinparam note {
-  BorderColor #999999
+  BorderColor #BBBBBB
   BackgroundColor #FFFDE7
 }
+hide footbox
 title UC1 – Send night data
-autonumber
 
-participant "device-simulator" as SIM
-queue "Kafka\n(3 brokers)" as K
-participant "apnea-detector" as DET
-database "PostgreSQL" as DB
+participant "Home device\n(simulator)" as SIM
+queue "Message queue\n(Kafka)" as K
+participant "Analysis service\n(apnea-detector)" as DET
+database "Database" as DB
 
-loop #DBEAFE 1 message per minute (5 patients)
-  SIM -> K : raw-signals: SpO2 + breathing\n(key = patient_id)
-  K -> K : store 3 copies, keep 7 days
-  K -> DET : raw-signals\n(group apnea-detector)
-  DET -> DET : clean signals
-  DET -> DB : SQL: save minute in raw_nights
+loop #DBEAFE every minute of the night
+  SIM -> K : oxygen + breathing values
+  K -> DET : passes them on
+  DET -> DB : saves the raw data
 end
 
-alt #F3F4F6 one broker fails
-  K -> K : other 2 brokers keep serving the data
-else apnea-detector down or paused (high_carbon)
-  K -> K : messages wait in Kafka (7 days)
-else message does not match JSON schema
-  DET -> DET : reject and log
-end
-
-note over SIM, DB : Last minute of the night has is_last = true
+note over K : Keeps every message safe\n(3 copies, 7 days)
 @enduml
