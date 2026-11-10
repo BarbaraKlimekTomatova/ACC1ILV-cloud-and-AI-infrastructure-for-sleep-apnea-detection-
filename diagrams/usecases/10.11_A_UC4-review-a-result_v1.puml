@@ -1,0 +1,50 @@
+@startuml UC4
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+skinparam BoxPadding 10
+skinparam sequence {
+  LifeLineBorderColor #888888
+  ParticipantBorderColor #555555
+  ParticipantBackgroundColor #FFFFFF
+  ActorBorderColor #555555
+  ActorBackgroundColor #FFFFFF
+  GroupBorderColor #777777
+  GroupHeaderFontColor #333333
+}
+skinparam database {
+  BorderColor #555555
+  BackgroundColor #FFFFFF
+}
+skinparam queue {
+  BorderColor #555555
+  BackgroundColor #FFFFFF
+}
+skinparam note {
+  BorderColor #999999
+  BackgroundColor #FFFDE7
+}
+title UC4 – Review a result
+autonumber
+
+actor "Doctor" as DOC
+participant "doctor-dashboard" as DASH
+database "PostgreSQL" as DB
+
+group #FFF5BE doctor review
+  DOC -> DASH : HTTP: open dashboard
+  DASH -> DB : SQL: read patients, results, SpO2, alerts
+  DASH --> DOC : patients sorted by severity
+  DOC -> DASH : HTTP: open report
+  DASH --> DOC : SpO2 chart, AHI, severity, alerts, model
+  alt doctor agrees
+    DOC -> DASH : HTTP: approve
+  else doctor disagrees
+    DOC -> DASH : HTTP: correct severity
+  end
+  DASH -> DB : SQL: save decision (audit log,\nnew row, never changed)
+  DASH --> DOC : decision saved
+end
+@enduml
