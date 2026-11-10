@@ -1,50 +1,44 @@
 @startuml UC4
 skinparam shadowing false
 skinparam defaultFontName Arial
-skinparam defaultFontSize 13
+skinparam defaultFontSize 15
 skinparam sequenceMessageAlign center
-skinparam responseMessageBelowArrow true
-skinparam BoxPadding 10
 skinparam sequence {
-  LifeLineBorderColor #888888
-  ParticipantBorderColor #555555
+  LifeLineBorderColor #BBBBBB
+  ParticipantBorderColor #666666
   ParticipantBackgroundColor #FFFFFF
-  ActorBorderColor #555555
+  ActorBorderColor #666666
   ActorBackgroundColor #FFFFFF
-  GroupBorderColor #777777
-  GroupHeaderFontColor #333333
+  GroupBorderColor #999999
 }
 skinparam database {
-  BorderColor #555555
+  BorderColor #666666
   BackgroundColor #FFFFFF
 }
 skinparam queue {
-  BorderColor #555555
+  BorderColor #666666
   BackgroundColor #FFFFFF
 }
 skinparam note {
-  BorderColor #999999
+  BorderColor #BBBBBB
   BackgroundColor #FFFDE7
 }
+hide footbox
 title UC4 – Review a result
-autonumber
 
 actor "Doctor" as DOC
-participant "doctor-dashboard" as DASH
-database "PostgreSQL" as DB
+participant "Doctor dashboard" as DASH
+database "Database" as DB
 
 group #FFF5BE doctor review
-  DOC -> DASH : HTTP: open dashboard
-  DASH -> DB : SQL: read patients, results, SpO2, alerts
-  DASH --> DOC : patients sorted by severity
-  DOC -> DASH : HTTP: open report
-  DASH --> DOC : SpO2 chart, AHI, severity, alerts, model
-  alt doctor agrees
-    DOC -> DASH : HTTP: approve
-  else doctor disagrees
-    DOC -> DASH : HTTP: correct severity
+  DOC -> DASH : opens the dashboard
+  DASH -> DOC : patients, most severe first
+  DOC -> DASH : opens one report
+  alt agrees
+    DOC -> DASH : approves
+  else disagrees
+    DOC -> DASH : corrects the severity
   end
-  DASH -> DB : SQL: save decision (audit log,\nnew row, never changed)
-  DASH --> DOC : decision saved
+  DASH -> DB : saves the decision\n(audit log)
 end
 @enduml

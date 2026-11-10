@@ -1,62 +1,46 @@
 @startuml UC2
 skinparam shadowing false
 skinparam defaultFontName Arial
-skinparam defaultFontSize 13
+skinparam defaultFontSize 15
 skinparam sequenceMessageAlign center
-skinparam responseMessageBelowArrow true
-skinparam BoxPadding 10
 skinparam sequence {
-  LifeLineBorderColor #888888
-  ParticipantBorderColor #555555
+  LifeLineBorderColor #BBBBBB
+  ParticipantBorderColor #666666
   ParticipantBackgroundColor #FFFFFF
-  ActorBorderColor #555555
+  ActorBorderColor #666666
   ActorBackgroundColor #FFFFFF
-  GroupBorderColor #777777
-  GroupHeaderFontColor #333333
+  GroupBorderColor #999999
 }
 skinparam database {
-  BorderColor #555555
+  BorderColor #666666
   BackgroundColor #FFFFFF
 }
 skinparam queue {
-  BorderColor #555555
+  BorderColor #666666
   BackgroundColor #FFFFFF
 }
 skinparam note {
-  BorderColor #999999
+  BorderColor #BBBBBB
   BackgroundColor #FFFDE7
 }
+hide footbox
 title UC2 – Analyse a night
-autonumber
 
-database "etcd" as ETCD
-queue "Kafka" as K
-participant "apnea-detector" as DET
-participant "ahi-triage" as TRI
-database "PostgreSQL" as DB
-participant "doctor-dashboard" as DASH
+participant "Analysis service\n(apnea-detector)" as DET
+participant "Triage service\n(ahi-triage)" as TRI
+database "Database" as DB
+participant "Doctor dashboard" as DASH
 
-loop every minute
-  ETCD --> DET : reads carbon mode
-  alt #E5E7EB low_carbon
-    DET -> DET : accurate model + CO2 (CodeCarbon)
-  else high_carbon, 08:00 deadline far
-    DET -> DET : pause analysis –\nminutes wait in Kafka
-  else high_carbon, 08:00 deadline close
-    DET -> DET : fast model + CO2 (CodeCarbon)
-  end
-  group #FFE4C4 apnea events
-    DET -> K : apnea-events: event of the minute
-    K -> TRI : apnea-events
-    TRI -> TRI : count events
-  end
+loop #FFE4C4 every minute
+  DET -> DET : finds apnea events\n(fast or accurate model)
+  DET -> TRI : event of the minute
 end
 
-opt #D4F5D4 last minute of the night (is_last = true)
-  TRI -> TRI : AHI = events / hours of sleep\nseverity: normal <5 · mild 5–15 ·\nmoderate 15–30 · severe ≥30
-  TRI -> DB : SQL: save result
-  TRI -> K : night-results
-  K -> DASH : night-results
-  DASH -> DASH : refresh patient list
+opt #D4F5D4 end of the night
+  TRI -> TRI : calculates AHI\nand severity
+  TRI -> DB : saves the result
+  TRI -> DASH : new result ready
 end
+
+note over DET : Model depends on the carbon mode:\nclean electricity → accurate model\ndirty electricity → wait, or fast model\nclose to 08:00
 @enduml
