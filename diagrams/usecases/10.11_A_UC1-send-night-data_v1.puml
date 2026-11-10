@@ -1,0 +1,54 @@
+@startuml UC1
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+skinparam BoxPadding 10
+skinparam sequence {
+  LifeLineBorderColor #888888
+  ParticipantBorderColor #555555
+  ParticipantBackgroundColor #FFFFFF
+  ActorBorderColor #555555
+  ActorBackgroundColor #FFFFFF
+  GroupBorderColor #777777
+  GroupHeaderFontColor #333333
+}
+skinparam database {
+  BorderColor #555555
+  BackgroundColor #FFFFFF
+}
+skinparam queue {
+  BorderColor #555555
+  BackgroundColor #FFFFFF
+}
+skinparam note {
+  BorderColor #999999
+  BackgroundColor #FFFDE7
+}
+title UC1 – Send night data
+autonumber
+
+participant "device-simulator" as SIM
+queue "Kafka\n(3 brokers)" as K
+participant "apnea-detector" as DET
+database "PostgreSQL" as DB
+
+loop #DBEAFE 1 message per minute (5 patients)
+  SIM -> K : raw-signals: SpO2 + breathing\n(key = patient_id)
+  K -> K : store 3 copies, keep 7 days
+  K -> DET : raw-signals\n(group apnea-detector)
+  DET -> DET : clean signals
+  DET -> DB : SQL: save minute in raw_nights
+end
+
+alt #F3F4F6 one broker fails
+  K -> K : other 2 brokers keep serving the data
+else apnea-detector down or paused (high_carbon)
+  K -> K : messages wait in Kafka (7 days)
+else message does not match JSON schema
+  DET -> DET : reject and log
+end
+
+note over SIM, DB : Last minute of the night has is_last = true
+@enduml

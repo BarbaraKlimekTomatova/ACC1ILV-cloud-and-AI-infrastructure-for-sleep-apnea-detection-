@@ -1,0 +1,52 @@
+@startuml UC3
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+skinparam BoxPadding 10
+skinparam sequence {
+  LifeLineBorderColor #888888
+  ParticipantBorderColor #555555
+  ParticipantBackgroundColor #FFFFFF
+  ActorBorderColor #555555
+  ActorBackgroundColor #FFFFFF
+  GroupBorderColor #777777
+  GroupHeaderFontColor #333333
+}
+skinparam database {
+  BorderColor #555555
+  BackgroundColor #FFFFFF
+}
+skinparam queue {
+  BorderColor #555555
+  BackgroundColor #FFFFFF
+}
+skinparam note {
+  BorderColor #999999
+  BackgroundColor #FFFDE7
+}
+title UC3 – Raise an alert
+autonumber
+
+queue "Kafka" as K
+participant "apnea-detector\n(alert check)" as DET
+participant "alert-service" as ALR
+database "PostgreSQL" as DB
+participant "doctor-dashboard" as DASH
+actor "Doctor" as DOC
+
+loop #FED7D7 every minute, every carbon mode
+  K -> DET : raw-signals\n(group apnea-alerts, never paused)
+  DET -> DET : check SpO2
+  opt SpO2 below 80 %
+    DET ->> ALR : ZeroMQ: alert\n(patient, night, minute, SpO2)
+    ALR -> DB : SQL: store alert
+  end
+end
+DASH -> DB : SQL: read alerts
+DASH --> DOC : shows urgent alert
+
+note over K, DET : Analysis (UC2) may be paused in high_carbon,\nthe alert check never is (ADR 0022)
+note over ALR : Open point: alert-service down\n→ ZeroMQ message lost (retry / buffer?)
+@enduml
