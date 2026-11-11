@@ -9,97 +9,103 @@ Team: Barbara Klimek Tomatova, Aliénor Franck de Préaumont
 
 ## What the project is about
 
-**Situation.** People who might have sleep apnea often wait months for a night in a sleep lab. Instead, they could take a small device home that measures their oxygen level (SpO₂) and breathing during the night. In our project we simulate five patients.
+**Situation.** People who might have sleep apnea often wait months for a night in a sleep lab. Instead, they could take a small device home that measures their oxygen level (SpO₂) and breathing during the night. In our project we simulate five patients with several nights each.
 
-**System.** The device data goes through Kafka (3 brokers, so one can fail) to an AI service that finds apnea events. Then we calculate the AHI (apnea-hypopnea index, events per hour) and sort the patient into *normal, mild, moderate* or *severe*. The doctor sees the results on a dashboard and approves each one. If the oxygen level drops too low, the doctor gets an alert right away.
+**System.** The device data goes through Kafka to an AI service that finds apnea events. Then we calculate the AHI (apnea-hypopnea index, events per hour) and sort the patient into *normal, mild, moderate* or *severe*. The doctor sees the results on a dashboard and approves each one. If the oxygen level drops too low, the doctor gets an alert right away.
 
 **Why we chose this topic.** It is a real medical problem and easy to explain. The night analysis is not urgent, it only has to be ready by 08:00 in the morning. So the system can wait for electricity with lower CO₂ and choose between a fast and an accurate model. Alerts are the exception and always run immediately.
 
-**Out of scope:** login for patients and doctors, history over several nights, sending reports to patients, therapy monitoring.
+**Out of scope:** login for patients and doctors, sending reports to patients, therapy monitoring.
 
 ---
 
 ## Use cases
 
+The actors are outside our system: the home device, the doctor, the external carbon intensity source and our team as operators. The carbon scheduler and Kubernetes are parts of the system, so they are not actors.
+
 | # | Use case | Actor | Description |
 | --- | --- | --- | --- |
-| UC1 | Send night data | Device (simulator) | The simulator sends the SpO₂ and breathing data of a night minute by minute over Kafka. The raw night is saved in the database. |
-| UC2 | Analyse a night | System | The system finds apnea events with the fast or the accurate model (depending on the carbon mode), calculates the AHI and severity and saves the result. It also measures how much CO₂ the analysis used. |
-| UC3 | Raise an alert | System, doctor | If SpO₂ goes below 80 %, an alert shows up on the doctor dashboard right away. Alerts never wait. |
-| UC4 | Review a result | Doctor | The doctor sees the patients sorted by severity, opens a report with the SpO₂ chart and approves or corrects the result. Every decision is logged. |
-| UC5 | Adapt to carbon intensity | Carbon scheduler | With high carbon intensity (simulated), the analysis waits for cleaner electricity but is done before 08:00; close to the deadline it uses the fast model. It can also move to a node in a cleaner (simulated) region. With low carbon intensity, the accurate model is used. |
-| UC6 | Scale under load | Kubernetes | When a lot of nights come in at the same time, Kubernetes starts more apnea-detector instances and removes them again later. |
-| UC7 | Monitor the system | Team (developers) | A dashboard shows response times, running instances, which model was used and how much CO₂ each analysis needed. |
+| UC1 | Upload night recording | Home device (simulated) | The device sends the SpO₂ and breathing data of a night minute by minute. Each patient sends several nights. The raw night is saved. |
+| UC2 | Screen night | Carbon intensity source (secondary) | The system finds apnea events, calculates the AHI and severity and saves the result. The carbon mode decides when the analysis runs (before 08:00) and if the fast or the accurate model is used. The CO₂ of each analysis is measured. |
+| UC3 | Raise urgent alert – `<<extend>>` UC2 | Doctor | Only when SpO₂ goes below 80 %: the doctor gets an alert right away. Alerts never wait for low-carbon electricity. |
+| UC4 | Review & approve result | Doctor | The doctor sees the patients sorted by severity, opens a report with the SpO₂ chart and the AHI trend over the patient's previous nights, and approves or corrects the result. Every decision is logged. |
+| UC5 | Adapt to carbon intensity | Carbon intensity source | When the (simulated) carbon intensity changes, the system changes its behaviour: it delays the analysis, switches between the fast and the accurate model, lowers the maximum number of detector pods and moves the detector to a node in a cleaner (simulated) region (AT / NO / PL). |
+| UC6 | Monitor system & footprint | Operator / Team | The team sees the system health (latency, Kafka lag, pods) and the AI behaviour (model used, confidence, events per hour, CO₂ per night). It gets a warning when the model drifts or its confidence drops. |
+| UC7 | Retrain model | Operator / Team, Carbon intensity source | The team starts a new training of the AI model. The training runs only in a low-carbon window, the new model version is used only if its F1 score is above our threshold. |
+
+**Non-functional requirements**
+
+- **Scalability:** when many nights arrive at the same time, Kubernetes scales the apnea-detector from 1 to 3 pods and back (this was UC6 "Scale under load" before; it is a quality requirement, not a use case).
+- **Alert latency:** an urgent alert reaches the doctor within 5 seconds, in every carbon mode.
+- **Deadline:** every night is analysed before 08:00.
+- **No data loss:** a night is not lost when a service or one Kafka broker stops.
+- **Measured footprint:** the CO₂ of every analysis and training is measured with CodeCarbon (only the energy inside the containers).
 
 ---
 
-## Component diagram
-
-![Component diagram](diagrams/30.10_B_component-diagram_v3.png)
-
-Zoomable version: [diagrams/30.10_B_component-diagram_v3.md](diagrams/30.10_B_component-diagram_v3.md)
+## Architecture
 
 The flow of one night: `device-simulator` → **raw-signals** → `apnea-detector` → **apnea-events** → `ahi-triage` → **night-results** → `doctor-dashboard`.
 
 ### Microservices
 
-We have six microservices. The device-simulator stands for the patients' homes, the other five run in Kubernetes.
-
 | Microservice | Use cases | What it does | Its data | Owner |
 | --- | --- | --- | --- | --- |
-| `device-simulator` | UC1, UC6 | Creates one night of SpO₂ and breathing data for each of the 5 patients and sends it to Kafka (one message per minute). A burst mode sends many nights at once for the scaling demo. | – (synthetic data) | Aliénor |
-| `apnea-detector` | UC1, UC2, UC3, UC5, UC6 | Reads `raw-signals`, cleans the data and saves the raw night. Finds apnea events with the fast or the accurate model (chosen by the carbon mode), measures CO₂ with CodeCarbon and sends one `apnea-events` message per minute. A separate alert check (own consumer group, never paused) sends a ZeroMQ alert if SpO₂ < 80 %. Scales 1 → 3 pods. | PostgreSQL: `raw_nights` | Barbara |
-| `ahi-triage` | UC2 | Counts the events of a night. After the last minute it calculates the AHI and severity, saves the result and sends `night-results`. | PostgreSQL: `results` | Aliénor |
-| `alert-service` | UC3 | Gets urgent alerts over ZeroMQ and saves them for the dashboard. | PostgreSQL: `alerts` | Barbara |
-| `doctor-dashboard` | UC3, UC4 | Shows the patients sorted by severity, SpO₂ charts and alerts. The doctor approves or corrects each result; every decision goes into the audit log. | PostgreSQL: `decisions` (audit log) | Aliénor |
-| `carbon-scheduler` | UC5 | Reads the (simulated) carbon intensity, sets `low_carbon` or `high_carbon` mode in etcd, delays the analysis until cleaner electricity (deadline 08:00) and moves the detector pod to a cleaner node (AT / NO / PL). | etcd: carbon mode | Barbara |
-
-**AI model:** the AI model is not a separate microservice. It is part of the `apnea-detector`, which loads a scikit-learn model (`models/model.joblib`, path from `MODEL_PATH`). We train it beforehand with a training script on simulated nights; the script prints the F1 score and the CO₂ of the training.
+| `device-simulator` | UC1 | Simulates the home device: sends several nights of SpO₂ and breathing data for 5 patients, one message per minute. A burst mode sends many nights at once (to test scaling). | – (synthetic data) | Aliénor |
+| `apnea-detector` | UC2, UC5 | Saves the raw night, finds apnea events with the fast or the accurate model (chosen by the carbon mode) and measures the CO₂ with CodeCarbon. Pauses while the carbon intensity is high. Scales from 1 to 3 pods. | PostgreSQL: `raw_nights` | Barbara |
+| `alert-check` (part of the detector) | UC3 | Reads the same raw data with its own consumer group that is never paused. If SpO₂ < 80 %, it sends a message to the `alerts` topic. | – | Barbara |
+| `ahi-triage` | UC2 | Counts the events of a night, calculates the AHI and severity, saves the result and sends `night-results`. | PostgreSQL: `results` | Aliénor |
+| `alert-service` | UC3 | Reads the `alerts` topic and shows the alert to the doctor right away. | PostgreSQL: `alerts` | Barbara |
+| `doctor-dashboard` | UC3, UC4 | Patients sorted by severity, SpO₂ chart, AHI trend over several nights and alerts. The doctor approves or corrects each result; every decision is logged. | PostgreSQL: `decisions` (audit log) | Aliénor |
+| `carbon-scheduler` | UC5 | Reads the simulated carbon intensity of three regions (AT / NO / PL) and sends the carbon mode to the `carbon-signal` topic. Lowers the max number of detector pods when carbon is high and moves the detector to the cleanest region. | – | Barbara |
+| `model-trainer` (Kubernetes Job) | UC7 | Trains a new version of the AI model only in a low-carbon window, measures F1 and CO₂. The new version is used only if F1 is above our threshold. | model versions | Barbara |
 
 ### Other components
 
 | Component | Why we need it |
 | --- | --- |
-| **Kafka** (3 brokers, KRaft) | Carries the three topics `raw-signals` (3 partitions), `apnea-events` and `night-results`. Every message is stored 3 times and kept 7 days, so a night can wait for low-carbon electricity and one broker can fail without data loss. Message key = `patient_id`. |
-| **ZeroMQ** | Direct, fast channel for urgent alerts, so they never wait in a queue. |
-| **etcd** | Stores the current carbon mode (`/sleep-apnea/carbon_mode`). The scheduler writes it, the detector reads it – the detector keeps working even if the scheduler is down. |
+| **Kafka** | A buffer for time-shifting: nights wait safely until the electricity is cleaner, and alerts use their own consumer group so they never wait. Topics: `raw-signals`, `apnea-events`, `night-results`, `alerts`, `carbon-signal`. See [ADR 0001](ADR/0001-kafka-as-a-buffer-for-time-shifting.md). |
 | **PostgreSQL** | One database with 5 tables; each table is written by only one service. |
-| **Kubernetes** | kind locally, GKE Standard on Google Cloud. Nodes are labelled AT / NO / PL (simulated regions). The HPA scales the apnea-detector from 1 to 3 pods. |
-| **Prometheus + Grafana** | All services expose `/metrics`; with the Kafka exporter we see health, latency, Kafka lag, pods, the model used and CO₂. |
-| **GitHub Actions** | Tests, builds the images and pushes them to Artifact Registry. |
+| **Kubernetes** | kind locally, GKE on Google Cloud. Nodes labelled AT / NO / PL (simulated regions), HPA for the detector. |
+| **Prometheus + Grafana** | System health (latency, Kafka lag, pods) and AI behaviour (model, confidence, drift, CO₂). |
+| **GitHub Actions** | Tests, builds and deploys the services; checks the F1 score of a new model before it is used. |
+
+Compared to checkpoint 1 we removed **ZeroMQ** (alerts now go through Kafka) and **etcd** (the carbon mode is a Kafka topic), so every technology we keep has a clear reason.
+
+### Technology choices
+
+Small choices that are not architectural decisions: kind for local Kubernetes, synthetic data instead of PhysioNet (PhysioNet stays optional), JSON messages with a fixed schema, scikit-learn for the model, CodeCarbon for measuring CO₂.
 
 ---
 
-## Data model and message model
+## Diagrams
 
-![Data model and message model](diagrams/30.10_B_data-message-model_v1.png)
+After the checkpoint 1 feedback we are redrawing all diagrams in **PlantUML** with UML notation:
 
-Zoomable version: [diagrams/30.10_B_data-message-model_v1.md](diagrams/30.10_B_data-message-model_v1.md)
+- use case diagram – `diagrams/usecases/`
+- one sequence diagram for each important use case: Screen night (UC2), Raise urgent alert (UC3), Adapt to carbon intensity (UC5)
+- component diagram with interfaces
+- deployment diagram (Kubernetes, regions, CI/CD)
 
-We only need five simple tables in one PostgreSQL database (`patients`, `raw_nights`, `results`, `alerts`, `decisions`), and each table is written by just one service. Patients have a label (e.g. *Patient 1*), no real name. Between the services we send four kinds of messages: three over Kafka (`raw-signals`, `apnea-events`, `night-results`) and the alert over ZeroMQ.
+The old Mermaid diagrams from checkpoint 1 are in `diagrams/archive/`.
 
 ---
 
-## Sequence diagram – one night end to end (UC1–UC7)
+## Architecture decisions
 
-![Sequence diagram](diagrams/30.10_B_sequence-diagram_v2.png)
-
-Zoomable version: [diagrams/30.10_B_sequence-diagram_v2.md](diagrams/30.10_B_sequence-diagram_v2.md)
-
-The night comes in minute by minute: the apnea-detector checks every minute for a dangerous SpO₂ drop, and the carbon mode decides if it runs the accurate model, pauses the analysis or uses the fast model close to 08:00. After the last minute, ahi-triage calculates the AHI and the doctor approves or corrects it, and when many nights come at once Kubernetes scales the detector from 1 to 3 pods.
+The 7 decisions that shape our architecture are in [ADR/](ADR/README.md). Our first 28 ADRs are in [ADR/Archive/](ADR/Archive/README.md).
 
 ---
 
 ## Repository structure
 
 ```
-ADR/        architecture decision records (in the order we made them)
-diagrams/   component, data/message model and sequence diagrams (.mmd source, .png, .md to zoom)
-doc/        project summary (PDF)
+ADR/                 architecture decision records (Archive/ = before the feedback)
+diagrams/usecases/   use case diagrams (PlantUML)
+diagrams/archive/    old Mermaid diagrams from checkpoint 1
+doc/                 project summary from checkpoint 1 (PDF)
 ```
-
-Older diagram versions (`24.10_A_…_v1`, `27.10_B_…_v2`, `30.10_sequence_diagram`) are kept to show how the design changed; the `30.10_B_*` files are the current ones.
 
 ## Status
 
-Design phase: use cases, architecture, data model and decisions are done. Next: Kafka locally (docker-compose), then the services.
+Reworking the design after the checkpoint 1 feedback: use cases and ADRs are updated, PlantUML diagrams are in progress. Next: sequence diagrams, then deployment to Kubernetes.
