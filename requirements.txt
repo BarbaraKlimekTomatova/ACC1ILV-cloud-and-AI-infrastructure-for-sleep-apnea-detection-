@@ -1,0 +1,45 @@
+# sleep-apnea-detection – Python dependencies (all services)
+# Flow: device-simulator -> raw-signals -> apnea-detector -> apnea-events -> ahi-triage -> night-results -> doctor-dashboard
+#
+# Python 3.11+ required.
+# Setup (Windows PowerShell):
+#   python -m venv .venv
+#   .venv\Scripts\Activate.ps1
+#   pip install -r requirements.txt
+# Setup (macOS / Linux):
+#   python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
+#
+# Kubernetes (kind / GKE), Kafka (Strimzi), PostgreSQL, etcd, Prometheus and Grafana
+# run as containers in the cluster, so they are not pip packages.
+# Only the Python client libraries the services need are listed here.
+
+# --- Messaging -------------------------------------------------------------
+confluent-kafka==2.16.1      # Kafka producer/consumer/admin (ADR 0002, 0020, 0022)
+pyzmq==27.3.0                # urgent SpO2 alerts detector -> alert-service (ADR 0009)
+jsonschema==4.26.0           # validate messages against schemas/ (ADR 0026)
+
+# --- Database --------------------------------------------------------------
+psycopg[binary]==3.3.8       # PostgreSQL, one DB / five tables (ADR 0003, 0025)
+
+# --- Monitoring (UC7) ------------------------------------------------------
+prometheus-client==0.26.0    # /metrics endpoint in every service, scraped by Prometheus -> Grafana (ADR 0017)
+
+# --- Carbon-aware scheduling (UC5, UC6) ------------------------------------
+kubernetes==37.0.2           # carbon-scheduler moves the detector pod between node pools (ADR 0011)
+etcd3gw==2.7.0               # carbon mode in etcd, via etcd's HTTP gateway (ADR 0010)
+codecarbon==3.3.2            # CO2 per analysis and per training run (ADR 0013)
+
+# --- AI model (apnea-detector + training script) ---------------------------
+scikit-learn==1.9.1          # fast / accurate model (ADR 0023)
+joblib==1.6.0                # load models/model.joblib from MODEL_PATH
+numpy==2.5.4
+
+# --- Web / REST (doctor-dashboard, carbon-scheduler, alert-service) --------
+# same pins as services/carbon-scheduler/requirements.txt
+fastapi==0.115.6
+uvicorn==0.34.0
+jinja2==3.1.6                # HTML pages for the doctor-dashboard
+
+# --- Tests (CI with GitHub Actions, ADR 0027) ------------------------------
+pytest==8.3.4
+httpx==0.28.1

@@ -1,0 +1,44 @@
+@startuml UC4
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 15
+skinparam sequenceMessageAlign center
+skinparam sequence {
+  LifeLineBorderColor #BBBBBB
+  ParticipantBorderColor #666666
+  ParticipantBackgroundColor #FFFFFF
+  ActorBorderColor #666666
+  ActorBackgroundColor #FFFFFF
+  GroupBorderColor #999999
+}
+skinparam database {
+  BorderColor #666666
+  BackgroundColor #FFFFFF
+}
+skinparam queue {
+  BorderColor #666666
+  BackgroundColor #FFFFFF
+}
+skinparam note {
+  BorderColor #BBBBBB
+  BackgroundColor #FFFFFF
+}
+hide footbox
+title UC4 – Review a result
+
+actor "Doctor" as DOC
+participant "Doctor dashboard" as DASH
+database "Database" as DB
+
+group doctor review
+  DOC -> DASH : opens the dashboard
+  DASH -> DOC : patients, most severe first
+  DOC -> DASH : opens one report
+  alt agrees
+    DOC -> DASH : approves
+  else disagrees
+    DOC -> DASH : corrects the severity
+  end
+  DASH -> DB : saves the decision\n(audit log)
+end
+@enduml

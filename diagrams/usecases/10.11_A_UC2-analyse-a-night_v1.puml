@@ -1,0 +1,46 @@
+@startuml UC2
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 15
+skinparam sequenceMessageAlign center
+skinparam sequence {
+  LifeLineBorderColor #BBBBBB
+  ParticipantBorderColor #666666
+  ParticipantBackgroundColor #FFFFFF
+  ActorBorderColor #666666
+  ActorBackgroundColor #FFFFFF
+  GroupBorderColor #999999
+}
+skinparam database {
+  BorderColor #666666
+  BackgroundColor #FFFFFF
+}
+skinparam queue {
+  BorderColor #666666
+  BackgroundColor #FFFFFF
+}
+skinparam note {
+  BorderColor #BBBBBB
+  BackgroundColor #FFFFFF
+}
+hide footbox
+title UC2 – Analyse a night
+
+participant "Analysis service\n(apnea-detector)" as DET
+participant "Triage service\n(ahi-triage)" as TRI
+database "Database" as DB
+participant "Doctor dashboard" as DASH
+
+loop every minute
+  DET -> DET : finds apnea events\n(fast or accurate model)
+  DET -> TRI : event of the minute
+end
+
+opt end of the night
+  TRI -> TRI : calculates AHI\nand severity
+  TRI -> DB : saves the result
+  TRI -> DASH : new result ready
+end
+
+note over DET : Model depends on the carbon mode:\nclean electricity → accurate model\ndirty electricity → wait, or fast model\nclose to 08:00
+@enduml
