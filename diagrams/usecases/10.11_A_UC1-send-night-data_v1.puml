@@ -21,7 +21,7 @@ skinparam queue {
 }
 skinparam note {
   BorderColor #BBBBBB
-  BackgroundColor #FFFDE7
+  BackgroundColor #FFFFFF
 }
 hide footbox
 title UC1 – Send night data
@@ -31,7 +31,7 @@ queue "Message queue\n(Kafka)" as K
 participant "Analysis service\n(apnea-detector)" as DET
 database "Database" as DB
 
-loop #DBEAFE every minute of the night
+loop every minute of the night
   SIM -> K : oxygen + breathing values
   K -> DET : passes them on
   DET -> DB : saves the raw data

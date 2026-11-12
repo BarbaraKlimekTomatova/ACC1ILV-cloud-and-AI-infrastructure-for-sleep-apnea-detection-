@@ -1,6 +1,6 @@
 # Use cases – detailed
 
-One file per use case: actor, goal, main flow, alternative flows and a sequence diagram (PlantUML: `.puml` source + `.png` image). They are cut out of the [sequence diagram v2](../30.10_B_sequence-diagram_v2.md) and use the same colours.
+One file per use case: actor, goal, main flow, alternative flows and a sequence diagram (PlantUML: `.puml` source + `.png` image). They are cut out of the [sequence diagram v2](../30.10_B_sequence-diagram_v2.md), in black and white.
 
 | # | Use case | Actor | File |
 | --- | --- | --- | --- |

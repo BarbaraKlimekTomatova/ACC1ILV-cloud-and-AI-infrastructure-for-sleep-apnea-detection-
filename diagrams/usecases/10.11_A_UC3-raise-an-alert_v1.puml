@@ -21,7 +21,7 @@ skinparam queue {
 }
 skinparam note {
   BorderColor #BBBBBB
-  BackgroundColor #FFFDE7
+  BackgroundColor #FFFFFF
 }
 hide footbox
 title UC3 – Raise an alert
@@ -32,7 +32,7 @@ database "Database" as DB
 participant "Doctor dashboard" as DASH
 actor "Doctor" as DOC
 
-group #FED7D7 oxygen below 80 %
+group oxygen below 80 %
   DET -> ALR : urgent alert (ZeroMQ)
   ALR -> DB : saves the alert
   DASH -> DOC : shows the alert right away

@@ -21,7 +21,7 @@ skinparam queue {
 }
 skinparam note {
   BorderColor #BBBBBB
-  BackgroundColor #FFFDE7
+  BackgroundColor #FFFFFF
 }
 hide footbox
 title UC4 – Review a result
@@ -30,7 +30,7 @@ actor "Doctor" as DOC
 participant "Doctor dashboard" as DASH
 database "Database" as DB
 
-group #FFF5BE doctor review
+group doctor review
   DOC -> DASH : opens the dashboard
   DASH -> DOC : patients, most severe first
   DOC -> DASH : opens one report

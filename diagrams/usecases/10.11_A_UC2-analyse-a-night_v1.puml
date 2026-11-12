@@ -21,7 +21,7 @@ skinparam queue {
 }
 skinparam note {
   BorderColor #BBBBBB
-  BackgroundColor #FFFDE7
+  BackgroundColor #FFFFFF
 }
 hide footbox
 title UC2 – Analyse a night
@@ -31,12 +31,12 @@ participant "Triage service\n(ahi-triage)" as TRI
 database "Database" as DB
 participant "Doctor dashboard" as DASH
 
-loop #FFE4C4 every minute
+loop every minute
   DET -> DET : finds apnea events\n(fast or accurate model)
   DET -> TRI : event of the minute
 end
 
-opt #D4F5D4 end of the night
+opt end of the night
   TRI -> TRI : calculates AHI\nand severity
   TRI -> DB : saves the result
   TRI -> DASH : new result ready
