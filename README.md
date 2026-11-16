@@ -72,7 +72,7 @@ The flow of one night: `device-simulator` → **raw-signals** → `apnea-detecto
 | --- | --- |
 | **Kafka** | A buffer for time-shifting: nights wait safely until the electricity is cleaner, and alerts use their own consumer group so they never wait. Topics: `raw-signals`, `apnea-events`, `night-results`, `alerts`, `carbon-signal`. See [ADR 0001](ADR/0001-kafka-as-a-buffer-for-time-shifting.md). |
 | **PostgreSQL** | One database with 5 tables; each table is written by only one service. |
-| **Kubernetes** | kind locally, GKE on Google Cloud. Nodes labelled AT / NO / PL (simulated regions), HPA for the detector. |
+| **Kubernetes** | kind locally, GKE on Google Cloud ([possible GCP architecture](doc/gcp-architecture.md)). Nodes labelled AT / NO / PL (simulated regions), HPA for the detector. |
 | **Prometheus + Grafana** | System health (latency, Kafka lag, pods) and AI behaviour (model, confidence, drift, CO₂). |
 | **GitHub Actions** | Tests, builds and deploys the services; checks the F1 score of a new model before it is used. |
 
@@ -109,7 +109,7 @@ The 7 decisions that shape our architecture are in [ADR/](ADR/README.md). Our fi
 ADR/                 architecture decision records (Archive/ = before the feedback)
 diagrams/usecases/   use case diagrams (PlantUML)
 diagrams/archive/    old Mermaid diagrams from checkpoint 1
-doc/                 project summary from checkpoint 1 (PDF)
+doc/                 project summary from checkpoint 1 (PDF), possible GCP architecture
 ```
 
 ## Status
