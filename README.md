@@ -5,6 +5,12 @@ Team: Barbara Klimek Tomatova, Aliénor Franck de Préaumont
 
 📄 Project summary: [doc/Klimek_Préaumont_Project_summary.pdf](doc/Klimek_Préaumont_Project_summary.pdf) · 🧭 Decisions: [ADR/](ADR/README.md)
 
+## 🌱 Key idea: carbon-aware screening
+
+The night analysis is **not urgent**: the result only has to be ready for the doctor by **08:00** in the morning. So the system does not have to run it as soon as the data arrives. It can **wait for electricity with lower CO₂** (the nights wait safely in Kafka), and it can **switch between a fast and an accurate model** depending on the carbon intensity and the time left until 08:00.
+
+**Urgent alerts are the exception:** when the oxygen level (SpO₂) drops below 80 %, the alert **always runs immediately** and reaches the doctor within 5 seconds, in every carbon mode. See [ADR 0002](ADR/0002-separate-alert-path-that-never-waits.md) and [ADR 0003](ADR/0003-carbon-aware-strategy.md).
+
 ---
 
 ## What the project is about
@@ -13,7 +19,7 @@ Team: Barbara Klimek Tomatova, Aliénor Franck de Préaumont
 
 **System.** The device data goes through Kafka to an AI service that finds apnea events. Then we calculate the AHI (apnea-hypopnea index, events per hour) and sort the patient into *normal, mild, moderate* or *severe*. The doctor sees the results on a dashboard and approves each one. If the oxygen level drops too low, the doctor gets an alert right away.
 
-**Why we chose this topic.** It is a real medical problem and easy to explain. The night analysis is not urgent, it only has to be ready by 08:00 in the morning. So the system can wait for electricity with lower CO₂ and choose between a fast and an accurate model. Alerts are the exception and always run immediately.
+**Why we chose this topic.** It is a real medical problem and easy to explain. Its time constraints make it a good example for a carbon-aware system (see *Key idea* above).
 
 **Out of scope:** login for patients and doctors, sending reports to patients, therapy monitoring.
 
