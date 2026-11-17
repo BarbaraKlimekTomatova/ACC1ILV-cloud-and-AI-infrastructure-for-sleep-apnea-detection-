@@ -1,0 +1,332 @@
+[
+  {
+    "night_id": "a01r",
+    "patient_id": "a01",
+    "source": "apnea-ecg",
+    "minutes": 492,
+    "usable_minutes": 492,
+    "apnea_minutes": 470,
+    "ahi": null,
+    "split": "test"
+  },
+  {
+    "night_id": "a02r",
+    "patient_id": "a02",
+    "source": "apnea-ecg",
+    "minutes": 530,
+    "usable_minutes": 530,
+    "apnea_minutes": 420,
+    "ahi": null,
+    "split": "test"
+  },
+  {
+    "night_id": "a03r",
+    "patient_id": "a03",
+    "source": "apnea-ecg",
+    "minutes": 522,
+    "usable_minutes": 522,
+    "apnea_minutes": 246,
+    "ahi": null,
+    "split": "test"
+  },
+  {
+    "night_id": "a04r",
+    "patient_id": "a04",
+    "source": "apnea-ecg",
+    "minutes": 496,
+    "usable_minutes": 456,
+    "apnea_minutes": 453,
+    "ahi": null,
+    "split": "test"
+  },
+  {
+    "night_id": "b01r",
+    "patient_id": "b01",
+    "source": "apnea-ecg",
+    "minutes": 486,
+    "usable_minutes": 482,
+    "apnea_minutes": 19,
+    "ahi": null,
+    "split": "test"
+  },
+  {
+    "night_id": "c01r",
+    "patient_id": "c01",
+    "source": "apnea-ecg",
+    "minutes": 483,
+    "usable_minutes": 468,
+    "apnea_minutes": 0,
+    "ahi": null,
+    "split": "test"
+  },
+  {
+    "night_id": "c02r",
+    "patient_id": "c02",
+    "source": "apnea-ecg",
+    "minutes": 501,
+    "usable_minutes": 484,
+    "apnea_minutes": 1,
+    "ahi": null,
+    "split": "test"
+  },
+  {
+    "night_id": "c03r",
+    "patient_id": "c03",
+    "source": "apnea-ecg",
+    "minutes": 453,
+    "usable_minutes": 453,
+    "apnea_minutes": 0,
+    "ahi": null,
+    "split": "test"
+  },
+  {
+    "night_id": "ucddb002",
+    "patient_id": "ucddb002",
+    "source": "ucddb",
+    "minutes": 374,
+    "usable_minutes": 373,
+    "apnea_minutes": 110,
+    "ahi": 24.4,
+    "split": "train"
+  },
+  {
+    "night_id": "ucddb003",
+    "patient_id": "ucddb003",
+    "source": "ucddb",
+    "minutes": 441,
+    "usable_minutes": 441,
+    "apnea_minutes": 217,
+    "ahi": 51.1,
+    "split": "train"
+  },
+  {
+    "night_id": "ucddb005",
+    "patient_id": "ucddb005",
+    "source": "ucddb",
+    "minutes": 413,
+    "usable_minutes": 410,
+    "apnea_minutes": 63,
+    "ahi": 13.2,
+    "split": "train"
+  },
+  {
+    "night_id": "ucddb006",
+    "patient_id": "ucddb006",
+    "source": "ucddb",
+    "minutes": 404,
+    "usable_minutes": 393,
+    "apnea_minutes": 126,
+    "ahi": 31.3,
+    "split": "train"
+  },
+  {
+    "night_id": "ucddb007",
+    "patient_id": "ucddb007",
+    "source": "ucddb",
+    "minutes": 406,
+    "usable_minutes": 406,
+    "apnea_minutes": 81,
+    "ahi": 12.0,
+    "split": "train"
+  },
+  {
+    "night_id": "ucddb008",
+    "patient_id": "ucddb008",
+    "source": "ucddb",
+    "minutes": 384,
+    "usable_minutes": 366,
+    "apnea_minutes": 21,
+    "ahi": 4.6,
+    "split": "train"
+  },
+  {
+    "night_id": "ucddb009",
+    "patient_id": "ucddb009",
+    "source": "ucddb",
+    "minutes": 462,
+    "usable_minutes": 462,
+    "apnea_minutes": 78,
+    "ahi": 12.5,
+    "split": "train"
+  },
+  {
+    "night_id": "ucddb010",
+    "patient_id": "ucddb010",
+    "source": "ucddb",
+    "minutes": 453,
+    "usable_minutes": 453,
+    "apnea_minutes": 154,
+    "ahi": 33.4,
+    "split": "demo"
+  },
+  {
+    "night_id": "ucddb011",
+    "patient_id": "ucddb011",
+    "source": "ucddb",
+    "minutes": 450,
+    "usable_minutes": 450,
+    "apnea_minutes": 40,
+    "ahi": 7.7,
+    "split": "train"
+  },
+  {
+    "night_id": "ucddb012",
+    "patient_id": "ucddb012",
+    "source": "ucddb",
+    "minutes": 432,
+    "usable_minutes": 397,
+    "apnea_minutes": 152,
+    "ahi": 24.8,
+    "split": "train"
+  },
+  {
+    "night_id": "ucddb013",
+    "patient_id": "ucddb013",
+    "source": "ucddb",
+    "minutes": 405,
+    "usable_minutes": 404,
+    "apnea_minutes": 71,
+    "ahi": 15.7,
+    "split": "demo"
+  },
+  {
+    "night_id": "ucddb014",
+    "patient_id": "ucddb014",
+    "source": "ucddb",
+    "minutes": 387,
+    "usable_minutes": 385,
+    "apnea_minutes": 189,
+    "ahi": 35.6,
+    "split": "train"
+  },
+  {
+    "night_id": "ucddb015",
+    "patient_id": "ucddb015",
+    "source": "ucddb",
+    "minutes": 458,
+    "usable_minutes": 449,
+    "apnea_minutes": 44,
+    "ahi": 6.2,
+    "split": "train"
+  },
+  {
+    "night_id": "ucddb017",
+    "patient_id": "ucddb017",
+    "source": "ucddb",
+    "minutes": 394,
+    "usable_minutes": 391,
+    "apnea_minutes": 65,
+    "ahi": 12.0,
+    "split": "demo"
+  },
+  {
+    "night_id": "ucddb018",
+    "patient_id": "ucddb018",
+    "source": "ucddb",
+    "minutes": 411,
+    "usable_minutes": 409,
+    "apnea_minutes": 9,
+    "ahi": 2.2,
+    "split": "demo"
+  },
+  {
+    "night_id": "ucddb019",
+    "patient_id": "ucddb019",
+    "source": "ucddb",
+    "minutes": 426,
+    "usable_minutes": 425,
+    "apnea_minutes": 92,
+    "ahi": 15.9,
+    "split": "train"
+  },
+  {
+    "night_id": "ucddb020",
+    "patient_id": "ucddb020",
+    "source": "ucddb",
+    "minutes": 376,
+    "usable_minutes": 376,
+    "apnea_minutes": 68,
+    "ahi": 15.1,
+    "split": "train"
+  },
+  {
+    "night_id": "ucddb021",
+    "patient_id": "ucddb021",
+    "source": "ucddb",
+    "minutes": 456,
+    "usable_minutes": 452,
+    "apnea_minutes": 89,
+    "ahi": 12.8,
+    "split": "train"
+  },
+  {
+    "night_id": "ucddb022",
+    "patient_id": "ucddb022",
+    "source": "ucddb",
+    "minutes": 394,
+    "usable_minutes": 388,
+    "apnea_minutes": 35,
+    "ahi": 6.9,
+    "split": "train"
+  },
+  {
+    "night_id": "ucddb023",
+    "patient_id": "ucddb023",
+    "source": "ucddb",
+    "minutes": 430,
+    "usable_minutes": 424,
+    "apnea_minutes": 151,
+    "ahi": 38.6,
+    "split": "train"
+  },
+  {
+    "night_id": "ucddb024",
+    "patient_id": "ucddb024",
+    "source": "ucddb",
+    "minutes": 454,
+    "usable_minutes": 454,
+    "apnea_minutes": 152,
+    "ahi": 24.6,
+    "split": "train"
+  },
+  {
+    "night_id": "ucddb025",
+    "patient_id": "ucddb025",
+    "source": "ucddb",
+    "minutes": 355,
+    "usable_minutes": 355,
+    "apnea_minutes": 312,
+    "ahi": 94.1,
+    "split": "demo"
+  },
+  {
+    "night_id": "ucddb026",
+    "patient_id": "ucddb026",
+    "source": "ucddb",
+    "minutes": 419,
+    "usable_minutes": 418,
+    "apnea_minutes": 91,
+    "ahi": 13.9,
+    "split": "train"
+  },
+  {
+    "night_id": "ucddb027",
+    "patient_id": "ucddb027",
+    "source": "ucddb",
+    "minutes": 446,
+    "usable_minutes": 446,
+    "apnea_minutes": 217,
+    "ahi": 55.6,
+    "split": "train"
+  },
+  {
+    "night_id": "ucddb028",
+    "patient_id": "ucddb028",
+    "source": "ucddb",
+    "minutes": 361,
+    "usable_minutes": 335,
+    "apnea_minutes": 171,
+    "ahi": 49.5,
+    "split": "train"
+  }
+]
