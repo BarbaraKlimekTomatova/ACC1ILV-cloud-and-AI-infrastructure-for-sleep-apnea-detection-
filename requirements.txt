@@ -43,3 +43,6 @@ jinja2==3.1.6                # HTML pages for the doctor-dashboard
 # --- Tests (CI with GitHub Actions, ADR 0027) ------------------------------
 pytest==8.3.4
 httpx==0.28.1
+
+# --- Data download (data/01_download.py) --------------------------------------
+wfdb>=4.1                    # read PhysioNet records (UCDDB, Apnea-ECG): SpO2, airflow, apnea annotations
