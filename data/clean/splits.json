@@ -6,6 +6,13 @@
     "minutes": 492,
     "usable_minutes": 492,
     "apnea_minutes": 470,
+    "minutes_by_event": {
+      "apnea_or_hypopnea": 470,
+      "normal": 19,
+      "unknown": 3
+    },
+    "apnea_count": null,
+    "hypopnea_count": null,
     "ahi": null,
     "split": "test"
   },
@@ -16,6 +23,13 @@
     "minutes": 530,
     "usable_minutes": 530,
     "apnea_minutes": 420,
+    "minutes_by_event": {
+      "apnea_or_hypopnea": 420,
+      "normal": 108,
+      "unknown": 2
+    },
+    "apnea_count": null,
+    "hypopnea_count": null,
     "ahi": null,
     "split": "test"
   },
@@ -26,6 +40,13 @@
     "minutes": 522,
     "usable_minutes": 522,
     "apnea_minutes": 246,
+    "minutes_by_event": {
+      "apnea_or_hypopnea": 246,
+      "normal": 273,
+      "unknown": 3
+    },
+    "apnea_count": null,
+    "hypopnea_count": null,
     "ahi": null,
     "split": "test"
   },
@@ -36,6 +57,13 @@
     "minutes": 496,
     "usable_minutes": 456,
     "apnea_minutes": 453,
+    "minutes_by_event": {
+      "apnea_or_hypopnea": 453,
+      "normal": 39,
+      "unknown": 4
+    },
+    "apnea_count": null,
+    "hypopnea_count": null,
     "ahi": null,
     "split": "test"
   },
@@ -46,6 +74,12 @@
     "minutes": 486,
     "usable_minutes": 482,
     "apnea_minutes": 19,
+    "minutes_by_event": {
+      "apnea_or_hypopnea": 19,
+      "normal": 467
+    },
+    "apnea_count": null,
+    "hypopnea_count": null,
     "ahi": null,
     "split": "test"
   },
@@ -56,6 +90,11 @@
     "minutes": 483,
     "usable_minutes": 468,
     "apnea_minutes": 0,
+    "minutes_by_event": {
+      "normal": 483
+    },
+    "apnea_count": null,
+    "hypopnea_count": null,
     "ahi": null,
     "split": "test"
   },
@@ -66,6 +105,12 @@
     "minutes": 501,
     "usable_minutes": 484,
     "apnea_minutes": 1,
+    "minutes_by_event": {
+      "apnea_or_hypopnea": 1,
+      "normal": 500
+    },
+    "apnea_count": null,
+    "hypopnea_count": null,
     "ahi": null,
     "split": "test"
   },
@@ -76,6 +121,11 @@
     "minutes": 453,
     "usable_minutes": 453,
     "apnea_minutes": 0,
+    "minutes_by_event": {
+      "normal": 453
+    },
+    "apnea_count": null,
+    "hypopnea_count": null,
     "ahi": null,
     "split": "test"
   },
@@ -86,6 +136,13 @@
     "minutes": 374,
     "usable_minutes": 373,
     "apnea_minutes": 110,
+    "minutes_by_event": {
+      "apnea": 9,
+      "hypopnea": 101,
+      "normal": 264
+    },
+    "apnea_count": 9,
+    "hypopnea_count": 115,
     "ahi": 24.4,
     "split": "train"
   },
@@ -96,6 +153,13 @@
     "minutes": 441,
     "usable_minutes": 441,
     "apnea_minutes": 217,
+    "minutes_by_event": {
+      "apnea": 33,
+      "hypopnea": 184,
+      "normal": 224
+    },
+    "apnea_count": 37,
+    "hypopnea_count": 268,
     "ahi": 51.1,
     "split": "train"
   },
@@ -106,6 +170,13 @@
     "minutes": 413,
     "usable_minutes": 410,
     "apnea_minutes": 63,
+    "minutes_by_event": {
+      "apnea": 3,
+      "hypopnea": 60,
+      "normal": 350
+    },
+    "apnea_count": 2,
+    "hypopnea_count": 55,
     "ahi": 13.2,
     "split": "train"
   },
@@ -116,6 +187,13 @@
     "minutes": 404,
     "usable_minutes": 393,
     "apnea_minutes": 126,
+    "minutes_by_event": {
+      "apnea": 50,
+      "hypopnea": 76,
+      "normal": 278
+    },
+    "apnea_count": 60,
+    "hypopnea_count": 127,
     "ahi": 31.3,
     "split": "train"
   },
@@ -126,6 +204,13 @@
     "minutes": 406,
     "usable_minutes": 406,
     "apnea_minutes": 81,
+    "minutes_by_event": {
+      "apnea": 22,
+      "hypopnea": 59,
+      "normal": 325
+    },
+    "apnea_count": 19,
+    "hypopnea_count": 54,
     "ahi": 12.0,
     "split": "train"
   },
@@ -136,6 +221,13 @@
     "minutes": 384,
     "usable_minutes": 366,
     "apnea_minutes": 21,
+    "minutes_by_event": {
+      "apnea": 1,
+      "hypopnea": 20,
+      "normal": 363
+    },
+    "apnea_count": 1,
+    "hypopnea_count": 18,
     "ahi": 4.6,
     "split": "train"
   },
@@ -146,6 +238,13 @@
     "minutes": 462,
     "usable_minutes": 462,
     "apnea_minutes": 78,
+    "minutes_by_event": {
+      "apnea": 18,
+      "hypopnea": 60,
+      "normal": 384
+    },
+    "apnea_count": 15,
+    "hypopnea_count": 61,
     "ahi": 12.5,
     "split": "train"
   },
@@ -156,6 +255,13 @@
     "minutes": 453,
     "usable_minutes": 453,
     "apnea_minutes": 154,
+    "minutes_by_event": {
+      "apnea": 6,
+      "hypopnea": 148,
+      "normal": 299
+    },
+    "apnea_count": 4,
+    "hypopnea_count": 229,
     "ahi": 33.4,
     "split": "demo"
   },
@@ -166,6 +272,12 @@
     "minutes": 450,
     "usable_minutes": 450,
     "apnea_minutes": 40,
+    "minutes_by_event": {
+      "hypopnea": 40,
+      "normal": 410
+    },
+    "apnea_count": 0,
+    "hypopnea_count": 35,
     "ahi": 7.7,
     "split": "train"
   },
@@ -176,6 +288,13 @@
     "minutes": 432,
     "usable_minutes": 397,
     "apnea_minutes": 152,
+    "minutes_by_event": {
+      "apnea": 53,
+      "hypopnea": 99,
+      "normal": 280
+    },
+    "apnea_count": 41,
+    "hypopnea_count": 110,
     "ahi": 24.8,
     "split": "train"
   },
@@ -186,6 +305,12 @@
     "minutes": 405,
     "usable_minutes": 404,
     "apnea_minutes": 71,
+    "minutes_by_event": {
+      "hypopnea": 71,
+      "normal": 334
+    },
+    "apnea_count": 0,
+    "hypopnea_count": 65,
     "ahi": 15.7,
     "split": "demo"
   },
@@ -196,6 +321,13 @@
     "minutes": 387,
     "usable_minutes": 385,
     "apnea_minutes": 189,
+    "minutes_by_event": {
+      "apnea": 3,
+      "hypopnea": 186,
+      "normal": 198
+    },
+    "apnea_count": 3,
+    "hypopnea_count": 179,
     "ahi": 35.6,
     "split": "train"
   },
@@ -206,6 +338,13 @@
     "minutes": 458,
     "usable_minutes": 449,
     "apnea_minutes": 44,
+    "minutes_by_event": {
+      "apnea": 1,
+      "hypopnea": 43,
+      "normal": 414
+    },
+    "apnea_count": 1,
+    "hypopnea_count": 36,
     "ahi": 6.2,
     "split": "train"
   },
@@ -216,6 +355,13 @@
     "minutes": 394,
     "usable_minutes": 391,
     "apnea_minutes": 65,
+    "minutes_by_event": {
+      "apnea": 4,
+      "hypopnea": 61,
+      "normal": 329
+    },
+    "apnea_count": 4,
+    "hypopnea_count": 64,
     "ahi": 12.0,
     "split": "demo"
   },
@@ -226,6 +372,12 @@
     "minutes": 411,
     "usable_minutes": 409,
     "apnea_minutes": 9,
+    "minutes_by_event": {
+      "hypopnea": 9,
+      "normal": 402
+    },
+    "apnea_count": 0,
+    "hypopnea_count": 9,
     "ahi": 2.2,
     "split": "demo"
   },
@@ -236,6 +388,13 @@
     "minutes": 426,
     "usable_minutes": 425,
     "apnea_minutes": 92,
+    "minutes_by_event": {
+      "apnea": 24,
+      "hypopnea": 68,
+      "normal": 334
+    },
+    "apnea_count": 25,
+    "hypopnea_count": 79,
     "ahi": 15.9,
     "split": "train"
   },
@@ -246,6 +405,13 @@
     "minutes": 376,
     "usable_minutes": 376,
     "apnea_minutes": 68,
+    "minutes_by_event": {
+      "apnea": 3,
+      "hypopnea": 65,
+      "normal": 308
+    },
+    "apnea_count": 3,
+    "hypopnea_count": 70,
     "ahi": 15.1,
     "split": "train"
   },
@@ -256,6 +422,13 @@
     "minutes": 456,
     "usable_minutes": 452,
     "apnea_minutes": 89,
+    "minutes_by_event": {
+      "apnea": 11,
+      "hypopnea": 78,
+      "normal": 367
+    },
+    "apnea_count": 11,
+    "hypopnea_count": 69,
     "ahi": 12.8,
     "split": "train"
   },
@@ -266,6 +439,13 @@
     "minutes": 394,
     "usable_minutes": 388,
     "apnea_minutes": 35,
+    "minutes_by_event": {
+      "apnea": 2,
+      "hypopnea": 33,
+      "normal": 359
+    },
+    "apnea_count": 2,
+    "hypopnea_count": 25,
     "ahi": 6.9,
     "split": "train"
   },
@@ -276,6 +456,13 @@
     "minutes": 430,
     "usable_minutes": 424,
     "apnea_minutes": 151,
+    "minutes_by_event": {
+      "apnea": 5,
+      "hypopnea": 146,
+      "normal": 279
+    },
+    "apnea_count": 4,
+    "hypopnea_count": 187,
     "ahi": 38.6,
     "split": "train"
   },
@@ -286,6 +473,13 @@
     "minutes": 454,
     "usable_minutes": 454,
     "apnea_minutes": 152,
+    "minutes_by_event": {
+      "apnea": 25,
+      "hypopnea": 127,
+      "normal": 302
+    },
+    "apnea_count": 23,
+    "hypopnea_count": 131,
     "ahi": 24.6,
     "split": "train"
   },
@@ -296,6 +490,13 @@
     "minutes": 355,
     "usable_minutes": 355,
     "apnea_minutes": 312,
+    "minutes_by_event": {
+      "apnea": 200,
+      "hypopnea": 112,
+      "normal": 43
+    },
+    "apnea_count": 211,
+    "hypopnea_count": 222,
     "ahi": 94.1,
     "split": "demo"
   },
@@ -306,6 +507,13 @@
     "minutes": 419,
     "usable_minutes": 418,
     "apnea_minutes": 91,
+    "minutes_by_event": {
+      "apnea": 16,
+      "hypopnea": 75,
+      "normal": 328
+    },
+    "apnea_count": 14,
+    "hypopnea_count": 70,
     "ahi": 13.9,
     "split": "train"
   },
@@ -316,6 +524,13 @@
     "minutes": 446,
     "usable_minutes": 446,
     "apnea_minutes": 217,
+    "minutes_by_event": {
+      "apnea": 111,
+      "hypopnea": 106,
+      "normal": 229
+    },
+    "apnea_count": 156,
+    "hypopnea_count": 197,
     "ahi": 55.6,
     "split": "train"
   },
@@ -326,6 +541,13 @@
     "minutes": 361,
     "usable_minutes": 335,
     "apnea_minutes": 171,
+    "minutes_by_event": {
+      "apnea": 58,
+      "hypopnea": 113,
+      "normal": 190
+    },
+    "apnea_count": 50,
+    "hypopnea_count": 148,
     "ahi": 49.5,
     "split": "train"
   }

@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "night-results",
+  "description": "AHI and severity of one finished night, sent by ahi-triage. Key = patient_id.",
+  "type": "object",
+  "required": [
+    "patient_id",
+    "night_id",
+    "ahi",
+    "severity",
+    "finished_at"
+  ],
+  "properties": {
+    "patient_id": {
+      "type": "string"
+    },
+    "night_id": {
+      "type": "string"
+    },
+    "ahi": {
+      "type": "number",
+      "minimum": 0
+    },
+    "severity": {
+      "enum": [
+        "normal",
+        "mild",
+        "moderate",
+        "severe"
+      ]
+    },
+    "event_count": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "apnea_count": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "hypopnea_count": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "minutes": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "model": {
+      "enum": [
+        "fast",
+        "accurate",
+        null
+      ]
+    },
+    "model_version": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "carbon_mode": {
+      "enum": [
+        "low_carbon",
+        "high_carbon",
+        null
+      ]
+    },
+    "region": {
+      "enum": [
+        "AT",
+        "NO",
+        "PL",
+        null
+      ]
+    },
+    "kwh": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "gco2": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "deadline_met": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "finished_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": false
+}

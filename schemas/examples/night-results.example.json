@@ -1,0 +1,18 @@
+{
+  "patient_id": "ucddb013",
+  "night_id": "ucddb013",
+  "ahi": 15.7,
+  "severity": "moderate",
+  "event_count": 110,
+  "apnea_count": 22,
+  "hypopnea_count": 88,
+  "minutes": 418,
+  "model": "accurate",
+  "model_version": "v1",
+  "carbon_mode": "low_carbon",
+  "region": "NO",
+  "kwh": 0.0004,
+  "gco2": 0.02,
+  "deadline_met": true,
+  "finished_at": "2026-11-20T05:41:13+00:00"
+}

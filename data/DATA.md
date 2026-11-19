@@ -45,7 +45,7 @@ Small, safe fixes and separating **what the device sends** from **the answers**:
 | Output | What it is | In git |
 |---|---|---|
 | `clean/signals/<night>.npz` | only `spo2`, `flow`, `thorax`, `abdomen`. SpO2 gaps up to 10 s are filled by a straight line; longer gaps stay NaN. | yes |
-| `clean/labels.csv` | one row per minute: `night_id, patient_id, source, minute, apnea, sleep_stage, usable`. `usable = 0` when more than half of the SpO2 is missing or all breathing signals are flat (sensor off). | yes |
+| `clean/labels.csv` | one row per minute: `night_id, patient_id, source, minute, apnea, event, sleep_stage, usable`. `apnea` = 0/1 (apnea or hypopnea). `event` = 3 classes for UCDDB (`apnea` / `hypopnea` / `normal`, apnea wins if both touch a minute); Apnea-ECG only knows `apnea_or_hypopnea` / `normal`, because its experts did not score the type. `usable = 0` when more than half of the SpO2 is missing or all breathing signals are flat (sensor off). | yes |
 | `clean/splits.json` | one entry per night: `split` (train / demo / test), minutes, apnea minutes, AHI. | yes |
 
 Split is **by person**: every UCDDB night is a different person, and the

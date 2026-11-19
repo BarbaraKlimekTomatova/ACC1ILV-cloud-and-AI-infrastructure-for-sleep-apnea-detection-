@@ -26,6 +26,7 @@ know the answers.
 """
 
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 
 DATA = Path(__file__).resolve().parent
@@ -62,20 +63,81 @@ def build_alert_message(patient_id, night_id, minute, spo2_min):
 # ---------------------------------------------------------------- 3. apnea-events
 
 
+EVENTS = ("apnea", "hypopnea", "normal", "apnea_or_hypopnea")
+
+
 def build_apnea_event_message(patient_id, night_id, minute, event, probability,
-                              model, carbon_mode, is_last):
-    """Topic apnea-events, the detector's answer for one minute."""
-    # TODO: Barbara
-    raise NotImplementedError
+                              model, carbon_mode, is_last,
+                              model_version=None, region=None,
+                              kwh=None, gco2=None):
+    """Topic apnea-events, the detector's answer for one minute.
+
+    event        "apnea", "hypopnea" or "normal" (accurate model, 3 classes);
+                 the fast model cannot tell the type, it sends "apnea_or_hypopnea"
+    probability  0-1, how sure the model is that this minute is an apnea
+    model        "fast" or "accurate"
+    kwh, gco2    CodeCarbon for the whole night, only on the last minute
+    """
+    if event not in EVENTS:
+        raise ValueError(f"event must be one of {EVENTS}, not {event!r}")
+    if model not in ("fast", "accurate"):
+        raise ValueError(f"model must be 'fast' or 'accurate', not {model!r}")
+
+    message = {
+        "patient_id": patient_id,          # Kafka key
+        "night_id": night_id,
+        "minute": int(minute),
+        "event": event,
+        "probability": round(float(probability), 3),   # of the chosen event
+        "model": model,
+        "model_version": model_version,
+        "carbon_mode": carbon_mode,        # low_carbon or high_carbon
+        "region": region,                  # AT, NO or PL
+        "is_last": bool(is_last),
+        "sent_at": datetime.now(timezone.utc).isoformat(),
+    }
+    if is_last:
+        message["kwh"] = kwh
+        message["gco2"] = gco2
+    return message
 
 
 # ---------------------------------------------------------------- 4. night-results
 
 
-def build_night_result_message(patient_id, night_id, ahi, severity):
-    """Topic night-results, AHI and severity of one finished night."""
-    # TODO: Barbara
-    raise NotImplementedError
+def build_night_result_message(patient_id, night_id, ahi, severity,
+                               event_count=None, apnea_count=None,
+                               hypopnea_count=None, minutes=None,
+                               model=None, model_version=None,
+                               carbon_mode=None, region=None,
+                               kwh=None, gco2=None, deadline_met=None):
+    """Topic night-results, AHI and severity of one finished night.
+
+    The same fields as the table results, so ahi-triage can send the row
+    it just saved, and the dashboard does not need to read the database
+    to show a new night.
+    """
+    if severity not in ("normal", "mild", "moderate", "severe"):
+        raise ValueError(f"unknown severity {severity!r}")
+
+    return {
+        "patient_id": patient_id,          # Kafka key
+        "night_id": night_id,
+        "ahi": round(float(ahi), 1),       # events per hour
+        "severity": severity,
+        "event_count": event_count,        # apnea + hypopnea (+ untyped)
+        "apnea_count": apnea_count,
+        "hypopnea_count": hypopnea_count,
+        "minutes": minutes,                # length of the night
+        "model": model,
+        "model_version": model_version,
+        "carbon_mode": carbon_mode,
+        "region": region,
+        "kwh": kwh,
+        "gco2": gco2,
+        "deadline_met": deadline_met,      # ready before 08:00?
+        "finished_at": datetime.now(timezone.utc).isoformat(),
+    }
 
 
 # ---------------------------------------------------------------- 5. carbon-signal

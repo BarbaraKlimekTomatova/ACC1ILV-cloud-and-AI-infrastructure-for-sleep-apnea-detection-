@@ -1,0 +1,15 @@
+{
+  "patient_id": "ucddb013",
+  "night_id": "ucddb013",
+  "minute": 417,
+  "event": "hypopnea",
+  "probability": 0.87,
+  "model": "accurate",
+  "model_version": "v1",
+  "carbon_mode": "low_carbon",
+  "region": "NO",
+  "is_last": true,
+  "sent_at": "2026-11-20T05:41:12+00:00",
+  "kwh": 0.0004,
+  "gco2": 0.02
+}

@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "apnea-events",
+  "description": "The detector's answer for one minute of one night. Key = patient_id.",
+  "type": "object",
+  "required": [
+    "patient_id",
+    "night_id",
+    "minute",
+    "event",
+    "probability",
+    "model",
+    "carbon_mode",
+    "is_last",
+    "sent_at"
+  ],
+  "properties": {
+    "patient_id": {
+      "type": "string"
+    },
+    "night_id": {
+      "type": "string"
+    },
+    "minute": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "event": {
+      "enum": [
+        "apnea",
+        "hypopnea",
+        "normal",
+        "apnea_or_hypopnea"
+      ],
+      "description": "accurate model: apnea / hypopnea / normal; fast model: apnea_or_hypopnea / normal"
+    },
+    "probability": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "probability of the chosen event"
+    },
+    "model": {
+      "enum": [
+        "fast",
+        "accurate"
+      ]
+    },
+    "model_version": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "carbon_mode": {
+      "enum": [
+        "low_carbon",
+        "high_carbon"
+      ]
+    },
+    "region": {
+      "enum": [
+        "AT",
+        "NO",
+        "PL",
+        null
+      ]
+    },
+    "is_last": {
+      "type": "boolean"
+    },
+    "sent_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "kwh": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "gco2": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0
+    }
+  },
+  "additionalProperties": false
+}

@@ -17,7 +17,15 @@ What "clean" means here (only small, safe fixes, no feature engineering):
        0 if flow, thorax and abdomen are all flat (sensor off / disconnected),
        1 otherwise.
      Training skips unusable minutes; the live system still receives them.
-  3. Signals and labels go to different files. The signals are what Kafka
+  3. Each minute gets an event label `event` in labels.csv (3 classes):
+       UCDDB:     "apnea" or "hypopnea" if a scored event of that type touches
+                  the minute (same rule as `apnea` in 01_download.py), else
+                  "normal". If both touch the same minute, "apnea" wins.
+       Apnea-ECG: the experts only scored apnea yes/no per minute, without
+                  the type, so an "A" minute becomes "apnea_or_hypopnea".
+       No label (-1) -> "unknown".
+     The old 0/1 column `apnea` stays, so the binary F1 on Apnea-ECG still works.
+  4. Signals and labels go to different files. The signals are what Kafka
      will carry later (step 3). The labels never go to Kafka, they are only
      used to train and to test the model.
 
@@ -92,6 +100,32 @@ def patient_of(night):
     return night.rstrip("r") if source_of(night) == "apnea-ecg" else night
 
 
+EVENT_CLASSES = ("normal", "hypopnea", "apnea")   # for the 3-class model
+
+
+def minute_events(d, minutes):
+    """One event label per minute: normal / hypopnea / apnea (see point 3)."""
+    if "event_type" not in d.files:                      # Apnea-ECG
+        return np.array(["unknown" if a < 0 else "apnea_or_hypopnea" if a == 1
+                         else "normal" for a in d["apnea"]], dtype="U17")
+    event = np.full(minutes, "normal", dtype="U17")
+    # hypopnea first, apnea second, so apnea wins in a minute with both
+    for prefix, name in (("HYP", "hypopnea"), ("APNEA", "apnea")):
+        for on, dur, typ in zip(d["event_onset_s"], d["event_duration_s"], d["event_type"]):
+            if str(typ).startswith(prefix):
+                event[int(on // 60): int((on + dur) // 60) + 1] = name
+    return event
+
+
+def event_counts(d):
+    """Number of scored apnea and hypopnea events of the night (UCDDB only)."""
+    if "event_type" not in d.files:
+        return None, None
+    types = [str(t) for t in d["event_type"]]
+    return (sum(t.startswith("APNEA") for t in types),
+            sum(t.startswith("HYP") for t in types))
+
+
 def ahi(d):
     """Apnea-hypopnea events per hour of sleep (UCDDB only, needs scored events)."""
     if "event_type" not in d.files:
@@ -126,18 +160,24 @@ def main():
         sig = {s: d[s].astype(np.float32) for s in SIGNALS}
         sig["spo2"] = fill_short_gaps(sig["spo2"], MAX_SPO2_GAP_S)
         usable = usable_minutes(sig, minutes)
+        event = minute_events(d, minutes)
+        apnea_n, hypopnea_n = event_counts(d)
 
         np.savez_compressed(SIGNALS_DIR / f"{night}.npz",
                             **{s: x.astype(np.float16) for s, x in sig.items()})
 
         for m in range(minutes):
             rows.append([night, patient_of(night), source_of(night), m,
-                         int(d["apnea"][m]), int(d["sleep_stage"][m]), int(usable[m])])
+                         int(d["apnea"][m]), event[m],
+                         int(d["sleep_stage"][m]), int(usable[m])])
 
         nights.append({"night_id": night, "patient_id": patient_of(night),
                        "source": source_of(night), "minutes": minutes,
                        "usable_minutes": int(usable.sum()),
                        "apnea_minutes": int((d["apnea"] == 1).sum()),
+                       "minutes_by_event": {e: int((event == e).sum())
+                                            for e in np.unique(event)},
+                       "apnea_count": apnea_n, "hypopnea_count": hypopnea_n,
                        "ahi": ahi(d)})
         print(f"{night}: {minutes} min, {int(usable.sum())} usable, "
               f"{100 * np.isnan(sig['spo2']).mean():.1f}% SpO2 still missing")
@@ -145,7 +185,7 @@ def main():
     with open(CLEAN / "labels.csv", "w", newline="") as f:
         w = csv.writer(f)
         w.writerow(["night_id", "patient_id", "source", "minute",
-                    "apnea", "sleep_stage", "usable"])
+                    "apnea", "event", "sleep_stage", "usable"])
         w.writerows(rows)
 
     nights = make_splits(nights)
