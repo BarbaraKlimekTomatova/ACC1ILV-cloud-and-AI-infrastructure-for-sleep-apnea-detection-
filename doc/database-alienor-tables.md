@@ -1,4 +1,4 @@
-# Database – Aliénor's tables
+# Database 
 
 Database `sleep_apnea` (PostgreSQL 16). The SQL files are in [`db/init/`](../db/init/) and run in number order when the database starts for the first time (see [ADR 0007](../ADR/0007-one-postgresql-database-with-table-ownership.md): one database, every table written by one service only).
 
