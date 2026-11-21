@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "alerts",
+  "description": "Urgent alert: SpO2 went below 80 % in one minute. Sent by the alert-check right away, read by the alert-service. Key = patient_id.",
+  "type": "object",
+  "required": [
+    "patient_id",
+    "night_id",
+    "minute",
+    "spo2_min",
+    "threshold",
+    "detected_at"
+  ],
+  "properties": {
+    "patient_id": {
+      "type": "string"
+    },
+    "night_id": {
+      "type": "string"
+    },
+    "minute": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "minute of the night"
+    },
+    "spo2_min": {
+      "type": "number",
+      "minimum": 0,
+      "exclusiveMaximum": 80,
+      "description": "lowest SpO2 in that minute, %"
+    },
+    "threshold": {
+      "type": "number",
+      "description": "alert threshold, % (80)"
+    },
+    "detected_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "when the alert-check saw the drop; saved in alerts.detected_at"
+    }
+  },
+  "additionalProperties": false
+}

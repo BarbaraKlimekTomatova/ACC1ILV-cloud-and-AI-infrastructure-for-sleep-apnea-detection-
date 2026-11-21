@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "raw-signals",
+  "description": "One minute of home-device data of one night, sent by the device-simulator. No labels. Key = patient_id.",
+  "type": "object",
+  "required": [
+    "patient_id",
+    "night_id",
+    "source",
+    "minute",
+    "is_last",
+    "sent_at",
+    "spo2",
+    "flow",
+    "thorax",
+    "abdomen"
+  ],
+  "properties": {
+    "patient_id": {
+      "type": "string",
+      "description": "P01-P05 for the demo nights (table patients)"
+    },
+    "night_id": {
+      "type": "string"
+    },
+    "source": {
+      "enum": [
+        "ucddb",
+        "apnea-ecg"
+      ]
+    },
+    "minute": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "is_last": {
+      "type": "boolean",
+      "description": "true on the last minute of the night"
+    },
+    "sent_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "spo2": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 60,
+      "items": {
+        "type": [
+          "number",
+          "null"
+        ]
+      },
+      "description": "1 Hz, %, null = sensor drop-out; the last minute can be shorter"
+    },
+    "flow": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 240,
+      "items": {
+        "type": [
+          "number",
+          "null"
+        ]
+      },
+      "description": "4 Hz, raw device units"
+    },
+    "thorax": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 240,
+      "items": {
+        "type": [
+          "number",
+          "null"
+        ]
+      },
+      "description": "4 Hz, raw device units"
+    },
+    "abdomen": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 240,
+      "items": {
+        "type": [
+          "number",
+          "null"
+        ]
+      },
+      "description": "4 Hz, raw device units"
+    }
+  },
+  "additionalProperties": false
+}

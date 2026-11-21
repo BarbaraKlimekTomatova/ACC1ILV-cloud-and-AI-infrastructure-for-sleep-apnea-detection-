@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "carbon-signal",
+  "description": "Current carbon mode, sent by the carbon-scheduler when it changes. Key = region.",
+  "type": "object",
+  "required": [
+    "region",
+    "carbon_intensity",
+    "mode",
+    "sent_at"
+  ],
+  "properties": {
+    "region": {
+      "enum": [
+        "AT",
+        "NO",
+        "PL"
+      ],
+      "description": "region where the detector should run now"
+    },
+    "carbon_intensity": {
+      "type": "number",
+      "minimum": 0,
+      "description": "gCO2/kWh of that region"
+    },
+    "mode": {
+      "enum": [
+        "low_carbon",
+        "high_carbon"
+      ]
+    },
+    "sent_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": false
+}

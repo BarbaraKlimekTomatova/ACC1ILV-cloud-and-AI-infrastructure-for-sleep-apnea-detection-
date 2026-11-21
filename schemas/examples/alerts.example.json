@@ -1,0 +1,8 @@
+{
+  "patient_id": "P05",
+  "night_id": "ucddb025",
+  "minute": 8,
+  "spo2_min": 76.0,
+  "threshold": 80,
+  "detected_at": "2026-11-20T22:08:00.412+00:00"
+}
