@@ -5,7 +5,7 @@ Usage (when it is done):
 
 Input:   data/clean/signals/<night>.npz   (from 02_clean.py)
          data/clean/splits.json
-Output:  data/kafka_messages/<night>.jsonl   one line = one minute = one message
+Output:  kafka/messages/raw-signals/<night>.jsonl   one line = one minute = one message
 
 Our system has 5 Kafka topics. They are listed below in the order the data
 flows through the system (best practice: read the file top to bottom and you
@@ -31,7 +31,7 @@ from pathlib import Path
 
 DATA = Path(__file__).resolve().parent
 CLEAN = DATA / "clean"
-OUT = DATA / "kafka_messages"
+OUT = DATA.parent / "kafka" / "messages" / "raw-signals"
 
 SIGNALS = {"spo2": 1, "flow": 4, "thorax": 4, "abdomen": 4}   # Hz
 
@@ -46,7 +46,7 @@ def build_raw_signals_message(night_id, patient_id, source, minute, signals, is_
 
 
 def write_night(night_id):
-    """Write data/kafka_messages/<night_id>.jsonl, one raw-signals message per line."""
+    """Write kafka/messages/raw-signals/<night_id>.jsonl, one raw-signals message per line."""
     # TODO: Aliénor
     raise NotImplementedError
 
@@ -153,7 +153,7 @@ def build_carbon_signal_message(region, intensity_g_per_kwh, mode):
 
 
 def main():
-    """Write all nights from data/clean/splits.json to data/kafka_messages/."""
+    """Write all nights from data/clean/splits.json to kafka/messages/raw-signals/."""
     # TODO: Aliénor
     raise NotImplementedError
 

@@ -1,6 +1,6 @@
 # Architecture Decision Records
 
-After the checkpoint 1 feedback we kept only the decisions that really shape our architecture. Small technology choices (kind, JSON schemas, synthetic data …) are in the main README. Our first 28 ADRs are in [Archive/](Archive/README.md).
+After the checkpoint 1 feedback we kept only the decisions that really shape our architecture. Small technology choices (kind, JSON schemas, synthetic data …) are in the main README.
 
 | # | Decision | Use cases |
 | --- | --- | --- |

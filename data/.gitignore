@@ -1,3 +1,2 @@
-# data/raw and data/clean ARE committed (~36 MB). Only Kafka messages are ignored:
-kafka_messages/
+# data/raw and data/clean ARE committed (~36 MB). Kafka messages go to kafka/messages/ (ignored there).
 __pycache__/

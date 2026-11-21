@@ -3,7 +3,7 @@
 Course project for **ACC1ILV – Cloud and AI Infrastructure**
 Team: Barbara Klimek Tomatova, Aliénor Franck de Préaumont
 
-📄 Project summary: [doc/Klimek_Préaumont_Project_summary.pdf](doc/Klimek_Préaumont_Project_summary.pdf) · 🧭 Decisions: [ADR/](ADR/README.md)
+🧭 Decisions: [ADR/](ADR/README.md)
 
 ## 🌱 Key idea: carbon-aware screening
 
@@ -89,27 +89,28 @@ Small choices that are not architectural decisions: kind for local Kubernetes, s
 After the checkpoint 1 feedback we are redrawing all diagrams in **PlantUML** with UML notation:
 
 - use case diagram – `diagrams/usecases/`
+- database schema (ER diagram) – `diagrams/db_schema/`, described in [doc/database-tables.md](doc/database-tables.md)
 - one sequence diagram for each important use case: Screen night (UC2), Raise urgent alert (UC3), Adapt to carbon intensity (UC5)
 - component diagram with interfaces
 - deployment diagram (Kubernetes, regions, CI/CD)
-
-The old Mermaid diagrams from checkpoint 1 are in `diagrams/archive/`.
 
 ---
 
 ## Architecture decisions
 
-The 7 decisions that shape our architecture are in [ADR/](ADR/README.md). Our first 28 ADRs are in [ADR/Archive/](ADR/Archive/README.md).
+The 7 decisions that shape our architecture are in [ADR/](ADR/README.md).
 
 ---
 
 ## Repository structure
 
 ```
-ADR/                 architecture decision records (Archive/ = before the feedback)
+ADR/                 architecture decision records
 diagrams/usecases/   use case diagrams (PlantUML)
-diagrams/archive/    old Mermaid diagrams from checkpoint 1
-doc/                 project summary from checkpoint 1 (PDF), possible GCP architecture
+diagrams/db_schema/  database schema (PlantUML)
+db/init/             PostgreSQL tables and users (SQL)
+kafka/               Kafka messages: schemas/ (rules), examples/ (one sample each), messages/ (generated, not committed)
+doc/                 database tables, possible GCP architecture
 ```
 
 ## Status
