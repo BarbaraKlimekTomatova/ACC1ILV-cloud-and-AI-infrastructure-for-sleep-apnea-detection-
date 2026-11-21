@@ -24,7 +24,7 @@ skinparam note {
   BackgroundColor #FFFFFF
 }
 hide footbox
-title UC1 – Send night data
+title UC1 – Upload night recording
 
 participant "Home device\n(simulator)" as SIM
 queue "Message queue\n(Kafka)" as K
