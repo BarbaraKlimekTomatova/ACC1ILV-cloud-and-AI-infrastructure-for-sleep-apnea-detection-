@@ -13,7 +13,7 @@ The night analysis is not urgent. It only has to be ready by 08:00, so we want i
 3. **Kafka:** messages are stored for 7 days, consumers can pause and continue later from the same place, and several consumer groups can read the same data independently.
 
 ## Decision
-We use Kafka with three topics (`raw-signals`, `apnea-events`, `night-results`). The detector pauses reading while the carbon intensity is high, and the nights wait in Kafka. We run 3 brokers with replication factor 3, so one broker can fail without data loss.
+We use Kafka for the data between the services (`raw-signals`, `apnea-events`, `night-results`; `alerts` and `carbon-signal` come from ADR 0002 and 0003). The detector pauses reading while the carbon intensity is high, and the nights wait in Kafka. We run 3 brokers with replication factor 3, so one broker can fail without data loss.
 
 ## Consequences
 - Time-shifting is possible without extra code: pausing = not reading.

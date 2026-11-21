@@ -222,3 +222,6 @@ __marimo__/
 
 # trained models are not committed (model-trainer)
 models/*.joblib
+
+# any local virtual environment, e.g. .venv312 (Python 3.12)
+.venv*/

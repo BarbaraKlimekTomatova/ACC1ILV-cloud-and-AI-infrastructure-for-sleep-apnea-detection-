@@ -19,3 +19,4 @@ We use option 3. The alert check is a small, cheap rule (SpO₂ < 80 %), so runn
 - Alerts are independent of the carbon mode, and they are not lost if the alert-service restarts.
 - One technology less (no ZeroMQ).
 - Only the cheap rule runs during high carbon; the expensive AI model still waits.
+- The never-paused path also saves each minute in `raw_nights` (a small insert, no model), so the row of the night exists before its first alert (`alerts.night_id` → `raw_nights`) and the raw night is complete even while the analysis waits.
