@@ -19,10 +19,10 @@ Everything about the messages our services send each other through Kafka. The da
 
 | # | Topic | From → to | Value schema |
 |---|---|---|---|
-| 1 | `raw-signals` | device-simulator → apnea-detector, alert-check | – (to do) |
-| 2 | `alerts` | alert-check → alert-service | – (to do) |
+| 1 | `raw-signals` | device-simulator → apnea-detector, alert-check | [raw-signals-value.schema.json](schemas/raw-signals-value.schema.json) |
+| 2 | `alerts` | alert-check → alert-service | [alerts-value.schema.json](schemas/alerts-value.schema.json) |
 | 3 | `apnea-events` | apnea-detector → ahi-triage | [apnea-events-value.schema.json](schemas/apnea-events-value.schema.json) |
 | 4 | `night-results` | ahi-triage → doctor-dashboard | [night-results-value.schema.json](schemas/night-results-value.schema.json) |
-| 5 | `carbon-signal` | carbon-scheduler → apnea-detector | – (to do) |
+| 5 | `carbon-signal` | carbon-scheduler → apnea-detector | [carbon-signal-value.schema.json](schemas/carbon-signal-value.schema.json) |
 
 `night-results` carries almost the same values as the `results` table: ahi-triage saves the row and sends the message at the same time.
