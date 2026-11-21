@@ -24,7 +24,7 @@ skinparam note {
   BackgroundColor #FFFFFF
 }
 hide footbox
-title UC3 – Raise an alert
+title UC3 – Raise urgent alert
 
 participant "Analysis service\n(alert check)" as DET
 participant "Alert service" as ALR

@@ -90,7 +90,7 @@ After the checkpoint 1 feedback we are redrawing all diagrams in **PlantUML** wi
 
 - use case diagram (actors and use cases) – [`diagrams/usecases/`](diagrams/usecases/10.11_B_use-cases_v1.md)
 - database schema (ER diagram) – `diagrams/db_schema/`, described in [doc/database-tables.md](doc/database-tables.md)
-- one sequence diagram for each use case, with its description – [`diagrams/sequences/`](diagrams/sequences/README.md)
+- one sequence diagram for each use case, with its description – [`diagrams/sequences/`](diagrams/sequences/)
 - component diagram with interfaces
 - deployment diagram (Kubernetes, regions, CI/CD)
 
