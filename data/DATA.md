@@ -16,11 +16,11 @@ Run them in order. Each step reads the folder of the step before.
 pip install -r requirements.txt
 python data/01_download.py          # -> data/raw/        (once, ~15 min)
 python data/02_clean.py             # -> data/clean/      (a few seconds)
-python data/03_to_kafka_messages.py # -> data/kafka_messages/   (not done yet)
+python data/03_to_kafka_messages.py # -> kafka/messages/raw-signals/ (not done yet)
 ```
 
 ```
-PhysioNet ──01_download──> raw/ ──02_clean──> clean/signals/ ──03_to_kafka_messages──> kafka_messages/  (topic raw-signals)
+PhysioNet ──01_download──> raw/ ──02_clean──> clean/signals/ ──03_to_kafka_messages──> ../kafka/messages/raw-signals/
                                           └─> clean/labels.csv, clean/splits.json        (training only)
 ```
 
@@ -56,7 +56,7 @@ ucddb010 (33.4), ucddb025 (94.1).
 No normalisation and no features here: feature engineering lives in the
 apnea-detector, so training and live use run the same code.
 
-### Step 3 – `03_to_kafka_messages.py` → `data/kafka_messages/` (not done yet)
+### Step 3 – `03_to_kafka_messages.py` → `kafka/messages/raw-signals/` (not done yet)
 
 Only a skeleton with one method per Kafka topic and a TODO for who builds it
 (Aliénor: `raw-signals`, `alerts`, `carbon-signal`; Barbara: `apnea-events`,

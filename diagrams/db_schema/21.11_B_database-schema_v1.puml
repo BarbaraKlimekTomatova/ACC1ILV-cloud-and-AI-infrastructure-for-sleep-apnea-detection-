@@ -1,0 +1,122 @@
+@startuml database-schema
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 14
+skinparam linetype ortho
+hide circle
+hide empty methods
+skinparam class {
+  BorderColor #666666
+  ArrowColor #666666
+}
+
+legend top left
+  |= Colour |= Owner |= Tables |
+  |<#DBEAFE>        | Barbara | raw_nights, results, model_versions |
+  |<#EDE9FE>        | Aliénor | patients, alerts, decisions, carbon_decisions |
+  PK = primary key · FK = foreign key · UK = unique · * = required
+  dashed line = link by value only (no foreign key)
+endlegend
+
+entity patients #EDE9FE {
+  * patient_id : TEXT <<PK>>
+  --
+  * label : TEXT
+  source_record : TEXT <<UK>>
+  age : INT
+  sex : TEXT
+  bmi : REAL
+  diagnosis : TEXT
+  comorbidities : TEXT
+  medications : TEXT
+  notes : TEXT
+  created_at : TIMESTAMPTZ
+}
+
+entity raw_nights #DBEAFE {
+  * night_id : TEXT <<PK>>
+  --
+  * patient_id : TEXT <<FK>>
+  source : TEXT
+  recorded_at : TIMESTAMPTZ
+  spo2 : JSONB
+  flow : JSONB
+  thorax : JSONB
+  abdomen : JSONB
+}
+
+entity results #DBEAFE {
+  * result_id : BIGSERIAL <<PK>>
+  --
+  * night_id : TEXT <<FK>>
+  ahi : REAL
+  severity : TEXT
+  event_count : INT
+  model : TEXT
+  model_version : TEXT
+  carbon_mode : TEXT
+  region : TEXT
+  kwh : REAL
+  gco2 : REAL
+  deadline_met : BOOLEAN
+  llm_summary : TEXT
+  llm_model : TEXT
+  llm_gco2 : REAL
+  created_at : TIMESTAMPTZ
+}
+
+entity model_versions #DBEAFE {
+  * version : TEXT <<PK>>
+  --
+  * model : TEXT
+  trained_at : TIMESTAMPTZ
+  train_nights : INT
+  doctor_corrections_used : INT
+  triggered_by : TEXT
+  f1 : REAL
+  precision_score : REAL
+  recall_score : REAL
+  kwh : REAL
+  gco2 : REAL
+  region : TEXT
+  status : TEXT
+  artifact_path : TEXT
+}
+
+entity alerts #EDE9FE {
+  * alert_id : BIGSERIAL <<PK>>
+  --
+  * night_id : TEXT <<FK>>
+  * minute : INT
+  * spo2_min : REAL
+  * detected_at : TIMESTAMPTZ
+  stored_at : TIMESTAMPTZ
+}
+
+entity decisions #EDE9FE {
+  * decision_id : BIGSERIAL <<PK>>
+  --
+  * result_id : BIGINT <<FK>>
+  * doctor : TEXT
+  * action : TEXT
+  corrected_severity : TEXT
+  comment : TEXT
+  created_at : TIMESTAMPTZ
+}
+
+entity carbon_decisions #EDE9FE {
+  * id : BIGSERIAL <<PK>>
+  --
+  * at : TIMESTAMPTZ
+  * action : TEXT
+  region : TEXT
+  carbon_intensity : REAL
+  reason : TEXT
+}
+
+patients ||--o{ raw_nights : has nights
+raw_nights ||--o{ alerts : has alerts
+raw_nights ||--o{ results : is analysed into
+results ||--o{ decisions : is reviewed in
+model_versions ||..o{ results : version used in
+@enduml

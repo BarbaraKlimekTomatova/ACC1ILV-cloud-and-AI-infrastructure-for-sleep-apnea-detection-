@@ -16,7 +16,7 @@
 # --- Messaging -------------------------------------------------------------
 confluent-kafka==2.16.1      # Kafka producer/consumer/admin (ADR 0002, 0020, 0022)
 pyzmq==27.3.0                # urgent SpO2 alerts detector -> alert-service (ADR 0009)
-jsonschema==4.26.0           # validate messages against schemas/ (ADR 0026)
+jsonschema==4.26.0           # validate messages against kafka/schemas/ (ADR 0026)
 
 # --- Database --------------------------------------------------------------
 psycopg[binary]==3.3.8       # PostgreSQL, one DB / five tables (ADR 0003, 0025)
