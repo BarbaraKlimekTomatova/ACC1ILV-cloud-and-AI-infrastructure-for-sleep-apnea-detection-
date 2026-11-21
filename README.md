@@ -59,11 +59,11 @@ The flow of one night: `device-simulator` → **raw-signals** → `apnea-detecto
 | --- | --- | --- | --- | --- |
 | `device-simulator` | UC1 | Simulates the home device: sends several nights of SpO₂ and breathing data for 5 patients, one message per minute. A burst mode sends many nights at once (to test scaling). | – (synthetic data) | Aliénor |
 | `apnea-detector` | UC2, UC5 | Saves the raw night, finds apnea events with the fast or the accurate model (chosen by the carbon mode) and measures the CO₂ with CodeCarbon. Pauses while the carbon intensity is high. Scales from 1 to 3 pods. | PostgreSQL: `raw_nights` | Barbara |
-| `alert-check` (part of the detector) | UC3 | Reads the same raw data with its own consumer group that is never paused. If SpO₂ < 80 %, it sends a message to the `alerts` topic. | – | Barbara |
-| `ahi-triage` | UC2 | Counts the events of a night, calculates the AHI and severity, saves the result and sends `night-results`. | PostgreSQL: `results` | Aliénor |
-| `alert-service` | UC3 | Reads the `alerts` topic and shows the alert to the doctor right away. | PostgreSQL: `alerts` | Barbara |
+| `alert-check` (part of the detector) | UC3 | Reads the same raw data with its own consumer group that is never paused. If SpO₂ < 80 %, it sends a message to the `alerts` topic. | – | Aliénor |
+| `ahi-triage` | UC2 | Counts the events of a night, calculates the AHI and severity, saves the result and sends `night-results`. | PostgreSQL: `results` | Barbara |
+| `alert-service` | UC3 | Reads the `alerts` topic and shows the alert to the doctor right away. | PostgreSQL: `alerts` | Aliénor |
 | `doctor-dashboard` | UC3, UC4 | Patients sorted by severity, SpO₂ chart, AHI trend over several nights and alerts. The doctor approves or corrects each result; every decision is logged. | PostgreSQL: `decisions` (audit log) | Aliénor |
-| `carbon-scheduler` | UC5 | Reads the simulated carbon intensity of three regions (AT / NO / PL) and sends the carbon mode to the `carbon-signal` topic. Lowers the max number of detector pods when carbon is high and moves the detector to the cleanest region. | – | Barbara |
+| `carbon-scheduler` | UC5 | Reads the simulated carbon intensity of three regions (AT / NO / PL) and sends the carbon mode to the `carbon-signal` topic. Lowers the max number of detector pods when carbon is high and moves the detector to the cleanest region. | – | Aliénor |
 | `model-trainer` (Kubernetes Job) | UC7 | Trains a new version of the AI model only in a low-carbon window, measures F1 and CO₂. The new version is used only if F1 is above our threshold. | model versions | Barbara |
 
 ### Other components
