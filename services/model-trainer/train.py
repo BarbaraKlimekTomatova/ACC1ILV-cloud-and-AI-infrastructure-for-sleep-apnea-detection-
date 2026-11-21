@@ -1,7 +1,8 @@
-"""Train the ACCURATE apnea model (UC7, ADR 0005).
+"""Train the apnea model (UC7, ADR 0005): accurate (default) or fast.
 
-    python services/model-trainer/train.py              # train, save, write model_versions
-    python services/model-trainer/train.py --no-db      # same, but no database
+    python services/model-trainer/train.py                 # accurate, save, write model_versions
+    python services/model-trainer/train.py --no-db         # same, but no database
+    python services/model-trainer/train.py --model fast    # the fast model (high_carbon, ADR 0003)
 
 What it does
   1. Builds the per-minute features of every TRAIN night (data/clean/splits.json)
@@ -34,16 +35,20 @@ from pathlib import Path
 import joblib
 import numpy as np
 from sklearn.ensemble import HistGradientBoostingClassifier
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report, f1_score, precision_score, recall_score
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "services" / "common"))
 import features as F  # noqa: E402
 
 CLASSES = ["normal", "apnea", "hypopnea"]          # model output, index = class id
-MODEL = "accurate"
+MODELS = ("accurate", "fast")
 DEFAULT_DATA = ROOT / "data" / "clean"
-DEFAULT_OUT = ROOT / "models" / "model.joblib"
+DEFAULT_OUT = {"accurate": ROOT / "models" / "model.joblib",
+               "fast": ROOT / "models" / "model-fast.joblib"}
 DEFAULT_DB = "postgresql://model_trainer:dev_model_trainer@localhost:5432/sleep_apnea"
 # model_versions.region -> CodeCarbon country code (grid CO2 intensity)
 REGION_ISO = {"AT": "AUT", "NO": "NOR", "PL": "POL"}
@@ -93,9 +98,14 @@ def build_set(data_dir, nights, labels, mapping):
 
 
 # ------------------------------------------------------------------ model
-def make_model(seed=0):
-    """Gradient-boosted trees: on our data a bit better than a random forest
-    (held-out F1 0.91 vs 0.89) and faster to train."""
+def make_model(kind="accurate", seed=0):
+    """accurate: gradient-boosted trees, on our data a bit better than a random
+        forest (held-out F1 0.91 vs 0.89).
+    fast: scaled logistic regression, one dot product per minute, so it needs
+        almost no CPU (used in high_carbon close to the 08:00 deadline)."""
+    if kind == "fast":
+        return make_pipeline(StandardScaler(), LogisticRegression(
+            class_weight="balanced", max_iter=2000, random_state=seed))
     return HistGradientBoostingClassifier(
         max_iter=300, learning_rate=0.05, class_weight="balanced", random_state=seed)
 
@@ -144,22 +154,22 @@ class Carbon:
 
 
 # ------------------------------------------------------------------ database
-def next_version(conn):
-    """accurate-v1, accurate-v2, ... (model_trainer may read model_versions)."""
+def next_version(conn, model="accurate"):
+    """accurate-v1, accurate-v2, ... / fast-v1, ... (model_trainer may read model_versions)."""
     with conn.cursor() as cur:
         cur.execute(
             "SELECT version FROM model_versions WHERE model = %s AND version LIKE %s",
-            (MODEL, f"{MODEL}-v%"))
-        nums = [int(v[len(MODEL) + 2:]) for (v,) in cur.fetchall() if v[len(MODEL) + 2:].isdigit()]
-    return f"{MODEL}-v{max(nums, default=0) + 1}"
+            (model, f"{model}-v%"))
+        nums = [int(v[len(model) + 2:]) for (v,) in cur.fetchall() if v[len(model) + 2:].isdigit()]
+    return f"{model}-v{max(nums, default=0) + 1}"
 
 
 def version_row(version, train_nights, triggered_by, metrics, kwh, gco2, region, artifact_path,
-                doctor_corrections_used=0):
+                doctor_corrections_used=0, model="accurate"):
     """One model_versions row (db/init/04_model_versions.sql)."""
     return {
         "version": version,
-        "model": MODEL,
+        "model": model,
         "trained_at": datetime.now(timezone.utc),
         "train_nights": train_nights,
         "doctor_corrections_used": doctor_corrections_used,
@@ -188,7 +198,9 @@ def insert_version(conn, row):
 def parse_args(argv=None):
     p = argparse.ArgumentParser(description="Train the accurate apnea model.")
     p.add_argument("--data-dir", default=str(DEFAULT_DATA))
-    p.add_argument("--out", default=os.environ.get("MODEL_PATH", str(DEFAULT_OUT)))
+    p.add_argument("--model", default=os.environ.get("MODEL", "accurate"), choices=MODELS)
+    p.add_argument("--out", default=os.environ.get("MODEL_PATH"),
+                   help="default models/model.joblib (accurate) or models/model-fast.joblib (fast)")
     p.add_argument("--db-url", default=os.environ.get("DATABASE_URL", DEFAULT_DB))
     p.add_argument("--no-db", action="store_true", help="do not write model_versions")
     p.add_argument("--no-carbon", action="store_true", help="skip CodeCarbon (tests)")
@@ -206,18 +218,18 @@ def main(argv=None):
     labels = load_labels(a.data_dir)
     train = sorted(n for n, s in splits.items() if s == "train")
     test = sorted(n for n, s in splits.items() if s == "test")
-    print(f"train nights: {len(train)}   test nights: {len(test)}")
+    print(f"{a.model} model   train nights: {len(train)}   test nights: {len(test)}")
 
     conn = None
     if not a.no_db:
         import psycopg
         conn = psycopg.connect(a.db_url)
-    version = a.version or (next_version(conn) if conn else f"{MODEL}-dev")
+    version = a.version or (next_version(conn, a.model) if conn else f"{a.model}-dev")
 
     t0 = time.time()
     with Carbon(a.region, enabled=not a.no_carbon) as co2:
         X_train, y_train = build_set(a.data_dir, train, labels, TRAIN_LABEL)
-        model = make_model(a.seed).fit(X_train, y_train)
+        model = make_model(a.model, a.seed).fit(X_train, y_train)
     counts = np.bincount(y_train, minlength=len(CLASSES))
     print(f"trained on {len(y_train)} minutes "
           f"({', '.join(f'{c} {n}' for c, n in zip(CLASSES, counts))}) in {time.time() - t0:.0f} s")
@@ -234,7 +246,7 @@ def main(argv=None):
                                     target_names=CLASSES, zero_division=0))
     print(f"training energy: {co2.kwh} kWh, {co2.gco2} gCO2 (region {a.region})")
 
-    out = Path(a.out)
+    out = Path(a.out or DEFAULT_OUT[a.model])
     out.parent.mkdir(parents=True, exist_ok=True)
     joblib.dump({"model": model, "features": F.FEATURES, "classes": CLASSES,
                  "version": version, "metrics": metrics}, out)
@@ -243,7 +255,7 @@ def main(argv=None):
     artifact = out.resolve()
     artifact = artifact.relative_to(ROOT) if artifact.is_relative_to(ROOT) else artifact
     row = version_row(version, len(train), a.triggered_by, metrics, co2.kwh, co2.gco2,
-                      a.region, str(artifact))
+                      a.region, str(artifact), model=a.model)
     if conn:
         insert_version(conn, row)
         conn.close()

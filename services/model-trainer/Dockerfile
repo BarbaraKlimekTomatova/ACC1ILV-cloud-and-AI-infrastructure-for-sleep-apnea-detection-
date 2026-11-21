@@ -3,7 +3,8 @@
 #   docker run --rm model-trainer --no-db
 # with the docker-compose Postgres on your laptop:
 #   docker run --rm -e DATABASE_URL=postgresql://model_trainer:dev_model_trainer@host.docker.internal:5432/sleep_apnea model-trainer
-# the model is written to /app/models/model.joblib inside the container (mount -v "$PWD/models:/app/models" to keep it)
+# --model fast for the fast model; F1 gate: docker run --rm --entrypoint python model-trainer services/model-trainer/gate.py
+# the file goes to /app/models/ inside the container (mount -v "$PWD/models:/app/models" to keep it)
 # numpy 2.5 needs Python 3.12+
 FROM python:3.12-slim
 
@@ -13,11 +14,10 @@ RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
 # shared feature code + the training script + the cleaned nights
 COPY services/common/ services/common/
-COPY services/model-trainer/train.py services/model-trainer/train.py
+COPY services/model-trainer/train.py services/model-trainer/gate.py services/model-trainer/
 COPY data/clean/ data/clean/
 
 ENV PYTHONPATH=/app/services/common \
-    MODEL_PATH=/app/models/model.joblib \
     DATABASE_URL=postgresql://model_trainer:dev_model_trainer@postgres:5432/sleep_apnea \
     REGION=AT \
     TRIGGERED_BY=manual
