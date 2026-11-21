@@ -1,0 +1,48 @@
+# ahi-triage CI: unit tests + results test against a real PostgreSQL with db/init/
+name: ahi-triage
+
+on:
+  push:
+    paths:
+      - "services/ahi-triage/**"
+      - "tests/ahi-triage/**"
+      - "kafka/schemas/**"
+      - "db/init/**"
+      - ".github/workflows/ahi-triage.yml"
+  pull_request:
+    paths:
+      - "services/ahi-triage/**"
+      - "tests/ahi-triage/**"
+      - "kafka/schemas/**"
+      - "db/init/**"
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: sleep_apnea
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d sleep_apnea"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r services/ahi-triage/requirements.txt pytest==8.3.4
+      - name: Create the tables (db/init/)
+        env:
+          PGPASSWORD: postgres
+        run: for f in db/init/*.sql; do psql -h localhost -U postgres -d sleep_apnea -v ON_ERROR_STOP=1 -q -f "$f"; done
+      - name: Tests
+        env:
+          APNEA_TEST_DB: postgresql://apnea_detector:dev_apnea_detector@localhost:5432/sleep_apnea
+        run: pytest tests/ahi-triage

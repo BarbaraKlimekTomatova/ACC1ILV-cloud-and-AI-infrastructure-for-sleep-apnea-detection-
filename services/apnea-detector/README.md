@@ -1,6 +1,6 @@
 # apnea-detector
 
-UC2 (screen night), UC3 (alert check) and UC5 (carbon-aware). Owner: Barbara.
+UC2 (screen night), UC3 (alert check) and UC5 (carbon-aware). Owner: Barbara; the alert check (UC3) is Aliénor's.
 
 Everything is in `detector.py`, start with `python services/apnea-detector/detector.py`:
 

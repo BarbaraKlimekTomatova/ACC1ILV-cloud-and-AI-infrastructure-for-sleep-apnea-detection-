@@ -33,7 +33,7 @@ participant "Doctor dashboard" as DASH
 actor "Doctor" as DOC
 
 group oxygen below 80 %
-  DET -> ALR : urgent alert (ZeroMQ)
+  DET -> ALR : urgent alert (Kafka topic alerts)
   ALR -> DB : saves the alert
   DASH -> DOC : shows the alert right away
 end

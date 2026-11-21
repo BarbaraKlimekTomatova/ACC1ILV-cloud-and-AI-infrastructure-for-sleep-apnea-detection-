@@ -97,5 +97,25 @@ services:
       DEMO_TIME: ""
     ports: ["8000:8000"]                                 # Prometheus /metrics
 
+  # ---------------------------------------------------------------- ahi-triage (optional)
+  # reads apnea-events, writes results, sends night-results. Start with:
+  #   docker compose --profile triage up --build ahi-triage
+  ahi-triage:
+    profiles: ["triage"]
+    build:
+      context: .
+      dockerfile: services/ahi-triage/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    environment:
+      KAFKA_BOOTSTRAP: kafka:29092
+      DATABASE_URL: postgresql://ahi_triage:dev_ahi_triage@postgres:5432/sleep_apnea
+      # demo: same clock as the detector (deadline_met = finished before 08:00)
+      DEMO_TIME: ""
+    ports: ["8001:8001"]                                 # Prometheus /metrics
+
 volumes:
   pgdata:
