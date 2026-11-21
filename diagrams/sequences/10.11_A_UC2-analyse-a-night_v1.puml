@@ -1,0 +1,71 @@
+@startuml
+skinparam shadowing false
+skinparam dpi 200
+skinparam defaultFontName Arial
+skinparam defaultFontSize 15
+skinparam sequenceMessageAlign center
+skinparam sequence {
+  LifeLineBorderColor #BBBBBB
+  ParticipantBorderColor #666666
+  ParticipantBackgroundColor #FFFFFF
+  ActorBorderColor #666666
+  ActorBackgroundColor #FFFFFF
+  GroupBorderColor #999999
+  ArrowColor #444444
+}
+skinparam database {
+  BorderColor #666666
+  BackgroundColor #FFFFFF
+}
+skinparam queue {
+  BorderColor #666666
+  BackgroundColor #FFFFFF
+}
+skinparam note {
+  BorderColor #BBBBBB
+  BackgroundColor #FFFFFF
+}
+hide footbox
+title UC2 – Screen night
+
+queue "carbon-signal" as CS
+queue "raw-signals" as RS
+participant "apnea-detector" as DET
+queue "apnea-events" as AE
+participant "ahi-triage" as TRI
+participant "LLM" as LLM
+database "PostgreSQL" as DB
+queue "night-results" as NR
+participant "doctor-dashboard" as DASH
+
+CS ->> DET : carbon mode\n(low_carbon / high_carbon)
+
+loop every minute of the night
+  RS ->> DET : 1 minute of signals
+  alt low_carbon
+    DET -> DET : NightFeatures +\naccurate model
+  else high_carbon, 08:00 is far
+    DET -> DET : pauses reading,\nthe minute waits in Kafka
+  else high_carbon, 08:00 is close
+    DET -> DET : NightFeatures +\nfast model
+  end
+  DET ->> AE : event of the minute\n(+ kwh, gco2)
+end
+DET -> DB : saves the night\nin raw_nights
+
+AE ->> TRI : events of the night
+opt is_last = true
+  TRI -> TRI : AHI and severity
+  TRI -> LLM : summary for the doctor
+  LLM --> TRI : llm_summary
+  TRI -> DB : saves the result\nin results
+  TRI ->> NR : night result
+  NR ->> DASH : new result (then UC4)
+end
+
+note over DET : CodeCarbon measures kwh and gco2\nof the analysis
+legend bottom right
+  ->> asynchronous (Kafka)
+  -> synchronous call
+endlegend
+@enduml
