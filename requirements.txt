@@ -1,13 +1,13 @@
 # sleep-apnea-detection – Python dependencies (all services)
 # Flow: device-simulator -> raw-signals -> apnea-detector -> apnea-events -> ahi-triage -> night-results -> doctor-dashboard
 #
-# Python 3.11+ required.
+# Python 3.12-3.14 (3.11: numpy 2.5 needs 3.12+, 3.15: no confluent-kafka wheel yet).
 # Setup (Windows PowerShell):
-#   python -m venv .venv
+#   py -3.12 -m venv .venv
 #   .venv\Scripts\Activate.ps1
 #   pip install -r requirements.txt
 # Setup (macOS / Linux):
-#   python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
+#   python3.12 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
 #
 # Kubernetes (kind / GKE), Kafka (Strimzi), PostgreSQL, etcd, Prometheus and Grafana
 # run as containers in the cluster, so they are not pip packages.

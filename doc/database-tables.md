@@ -76,7 +76,7 @@ Age, sex, BMI, diagnosis, comorbidities, medications and notes are invented. The
 
 ## `raw_nights` – `02_raw_nights.sql`
 
-One row per recorded night. The apnea-detector saves the whole night here (UC2), so the dashboard can draw the SpO₂ chart and the night can be analysed again later.
+One row per recorded night. The apnea-detector creates the row at the first minute and adds every minute as it arrives (UC2), so the dashboard can draw the SpO₂ chart and the night can be analysed again later.
 
 | Column | PostgreSQL type | Simple type | Required | Key / rule | Description |
 |---|---|---|---|---|---|
@@ -164,7 +164,7 @@ One row per urgent alert: SpO₂ went below 80 % (UC3). Written by the alert-ser
 Index on `night_id` (the dashboard looks up the alerts of one night).
 Alert latency for monitoring = `stored_at − detected_at` (must stay under 5 s).
 
-> **Open point:** an alert happens during the night, but the `raw_nights` row may be written later (the apnea-detector can wait for low-carbon electricity). With the foreign key, such an alert is refused. To decide with Barbara: remove the foreign key, or write the `raw_nights` row at the first minute of the night.
+> **Solved:** the apnea-detector writes the `raw_nights` row at the **first minute** of the night, in its alert path that is never paused, before it sends any alert of that night. So the foreign key stays.
 
 ---
 

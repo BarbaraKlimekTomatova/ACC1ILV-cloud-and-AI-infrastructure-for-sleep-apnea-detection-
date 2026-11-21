@@ -76,5 +76,26 @@ services:
         echo "Topics:"
         $$T --bootstrap-server $$B --list
 
+  # ---------------------------------------------------------------- apnea-detector (optional)
+  # needs models/model.joblib first (services/model-trainer), start with:
+  #   docker compose --profile detector up --build apnea-detector
+  apnea-detector:
+    profiles: ["detector"]
+    build:
+      context: .
+      dockerfile: services/apnea-detector/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    environment:
+      KAFKA_BOOTSTRAP: kafka:29092
+      DATABASE_URL: postgresql://apnea_detector:dev_apnea_detector@postgres:5432/sleep_apnea
+      DEFAULT_CARBON_MODE: low_carbon
+      # demo: act as if it were this time (night 23:00 -> pause in high_carbon, 06:30 -> fast model)
+      DEMO_TIME: ""
+    ports: ["8000:8000"]                                 # Prometheus /metrics
+
 volumes:
   pgdata:
