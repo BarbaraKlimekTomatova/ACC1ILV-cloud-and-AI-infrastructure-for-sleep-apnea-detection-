@@ -1,0 +1,6 @@
+# model-trainer: same pins as the root requirements.txt
+numpy==2.5.4
+scikit-learn==1.9.1
+joblib==1.6.0
+codecarbon==3.3.2
+psycopg[binary]==3.3.8
