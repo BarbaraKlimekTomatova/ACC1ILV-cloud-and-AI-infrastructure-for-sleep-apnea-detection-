@@ -1,0 +1,58 @@
+@startuml
+skinparam shadowing false
+skinparam dpi 200
+skinparam defaultFontName Arial
+skinparam defaultFontSize 14
+skinparam usecase {
+  BorderColor #666666
+  BackgroundColor #FFFFFF
+}
+skinparam actor {
+  BorderColor #444444
+  BackgroundColor #FFFFFF
+}
+skinparam rectangle {
+  BorderColor #666666
+}
+skinparam rectangle<<system>> {
+  BorderColor #444444
+  BackgroundColor #FFFFFF
+}
+skinparam ArrowColor #666666
+skinparam nodesep 60
+skinparam ranksep 30
+title Sleep apnea detection – use cases
+
+' people are stick figures, external systems are boxes with <<system>>
+rectangle "Home device\n(simulated)" <<system>> as DEV
+actor "Doctor" as DOC
+rectangle "Carbon intensity\nsource" <<system>> as CIS
+actor "Operator / Team" as OP
+
+rectangle "Sleep apnea detection system" {
+  usecase "UC1\nUpload night recording" as UC1
+  usecase "UC4\nReview & approve result" as UC4
+  usecase "UC3\nRaise urgent alert" as UC3
+  usecase "UC2\nScreen night" as UC2
+  usecase "UC5\nAdapt to carbon intensity" as UC5
+  usecase "UC7\nRetrain model" as UC7
+  usecase "UC6\nMonitor system & footprint" as UC6
+}
+
+UC1 -[hidden]down- UC4
+UC4 -[hidden]down- UC3
+UC3 -[hidden]down- UC2
+UC2 -[hidden]down- UC5
+UC5 -[hidden]down- UC7
+UC7 -[hidden]down- UC6
+
+UC1 -left- DEV
+UC4 -left- DOC
+UC3 -[norank]- DOC
+UC3 .down.> UC2 : <<extend>>\nSpO2 < 80 %
+UC5 -right- CIS
+UC2 -[norank]- CIS
+UC7 -[norank]- CIS
+UC6 -right- OP
+UC7 -[norank]- OP
+@enduml

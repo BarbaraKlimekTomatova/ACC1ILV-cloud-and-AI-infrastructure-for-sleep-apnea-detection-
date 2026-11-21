@@ -88,9 +88,9 @@ Small choices that are not architectural decisions: kind for local Kubernetes, s
 
 After the checkpoint 1 feedback we are redrawing all diagrams in **PlantUML** with UML notation:
 
-- use case diagram – `diagrams/usecases/`
+- use case diagram (actors and use cases) – [`diagrams/usecases/`](diagrams/usecases/10.11_B_use-cases_v1.md)
 - database schema (ER diagram) – `diagrams/db_schema/`, described in [doc/database-tables.md](doc/database-tables.md)
-- one sequence diagram for each important use case: Screen night (UC2), Raise urgent alert (UC3), Adapt to carbon intensity (UC5)
+- one sequence diagram for each use case, with its description – [`diagrams/sequences/`](diagrams/sequences/README.md)
 - component diagram with interfaces
 - deployment diagram (Kubernetes, regions, CI/CD)
 
@@ -106,7 +106,8 @@ The 7 decisions that shape our architecture are in [ADR/](ADR/README.md).
 
 ```
 ADR/                 architecture decision records
-diagrams/usecases/   use case diagrams (PlantUML)
+diagrams/usecases/   use case diagram (PlantUML)
+diagrams/sequences/  one file per use case: description + sequence diagram (PlantUML)
 diagrams/db_schema/  database schema (PlantUML)
 db/init/             PostgreSQL tables and users (SQL)
 kafka/               Kafka messages: schemas/ (rules), examples/ (one sample each), messages/ (generated, not committed)
