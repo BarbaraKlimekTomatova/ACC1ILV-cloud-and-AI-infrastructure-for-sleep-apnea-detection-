@@ -25,14 +25,20 @@ spec:
             - name: model-trainer
               image: model-trainer:dev
               imagePullPolicy: IfNotPresent
+              envFrom:
+                - configMapRef: {name: apnea-config}     # KAFKA_BOOTSTRAP for carbon_wait.py
               env:
                 - name: DATABASE_URL
                   valueFrom:
                     secretKeyRef: {name: apnea-db, key: model-trainer}
                 - name: TRIGGERED_BY
                   value: schedule
-                - name: REGION
+                - name: REGION                     # replaced by the region of the low_carbon signal
                   value: AT
+                - name: WAIT_LOW_CARBON              # UC7 step 2: train only in a low-carbon window
+                  value: "1"
+                - name: MAX_WAIT_S                   # 02:00 + 6 h: no window by 08:00 -> no training (A2)
+                  value: "21600"
               resources:
                 requests: {cpu: 500m, memory: 512Mi}
                 limits: {cpu: "2", memory: 2Gi}

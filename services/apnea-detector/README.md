@@ -24,6 +24,7 @@ Everything is in `detector.py`, start with `python services/apnea-detector/detec
 | `low_carbon` | any | accurate model | apnea / hypopnea / normal |
 | `high_carbon` | more than 2 h before 08:00 | pause, minutes wait in Kafka | – |
 | `high_carbon` | 2 h or less before 08:00 | fast model | apnea_or_hypopnea / normal |
+| `high_carbon` | after 08:00, before 20:00 (night is late) | fast model | apnea_or_hypopnea / normal |
 
 - `kwh` / `gco2` are only on the last minute, for the whole night: CPU seconds × `CPU_WATTS`,
   CO₂ with the `carbon_intensity` of `carbon-signal` (CodeCarbon cannot measure steps of milliseconds).
@@ -45,7 +46,6 @@ python3.12 -m venv .venv && source .venv/bin/activate
 pip install -r services/apnea-detector/requirements.txt pytest==8.3.4
 docker compose up -d
 python services/model-trainer/train.py --no-db
-python services/model-trainer/train.py --no-db --model fast
 python services/apnea-detector/detector.py
 ```
 
@@ -65,10 +65,15 @@ Start the cluster and deploy: [k8s/README.md](../../k8s/README.md).
 | `KAFKA_BOOTSTRAP` | `localhost:9092` (`kafka:29092` in Docker and Kubernetes) |
 | `DATABASE_URL` | `postgresql://apnea_detector:dev_apnea_detector@localhost:5432/sleep_apnea` |
 | `USE_DB` | `1` (`0` = no `raw_nights`) |
-| `MODEL_PATH` / `MODEL_FAST_PATH` | `models/model.joblib` / `models/model-fast.joblib` (no fast file → accurate) |
+| `MODEL_PATH` | `models/model.joblib` (the accurate model from model-trainer) |
+
+The **fast model** is a rule without training in [`services/common/fast_model.py`](../common/fast_model.py)
+(owner: Aliénor). The detector calls its `predict()` in the FAST mode; while it is still a skeleton
+(`NotImplementedError`), the accurate model is used and the log says so.
 | `DEFAULT_CARBON_MODE` / `DEFAULT_CARBON_INTENSITY` | `low_carbon` / `300`, until the first `carbon-signal` |
 | `DEMO_TIME` | empty = real time |
 | `DEADLINE` / `DEADLINE_MARGIN_MIN` / `TZ_DEADLINE` | `08:00` / `120` / `Europe/Vienna` |
+| `NIGHT_START` | `20:00` (between 08:00 and this time a waiting night is late: fast model, no pause) |
 | `REGION` | region of the node (AT / NO / PL); empty = region of `carbon-signal` |
 | `ALERT_THRESHOLD` / `MIN_VALID_SPO2` | `80` / `50` (lower = sensor artefact) |
 | `CPU_WATTS` | `15` |

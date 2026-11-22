@@ -113,6 +113,9 @@ services:
     environment:
       KAFKA_BOOTSTRAP: kafka:29092
       DATABASE_URL: postgresql://ahi_triage:dev_ahi_triage@postgres:5432/sleep_apnea
+      # LLM summary from Ollama on the laptop (ollama serve; ollama pull llama3.2:1b), USE_LLM: "0" = off
+      LLM_URL: http://host.docker.internal:11434
+      USE_LLM: "1"
       # demo: same clock as the detector (deadline_met = finished before 08:00)
       DEMO_TIME: ""
     ports: ["8001:8001"]                                 # Prometheus /metrics

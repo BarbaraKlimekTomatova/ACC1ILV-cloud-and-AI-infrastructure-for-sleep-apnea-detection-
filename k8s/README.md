@@ -22,7 +22,6 @@ The manifests need the Kafka and PostgreSQL addresses of the base:
 ```
 kind create cluster --name apnea
 python services/model-trainer/train.py --no-db
-python services/model-trainer/train.py --no-db --model fast
 docker build -f services/apnea-detector/Dockerfile -t apnea-detector:dev .
 docker build -f services/ahi-triage/Dockerfile -t ahi-triage:dev .
 docker build -f services/model-trainer/Dockerfile -t model-trainer:dev .
