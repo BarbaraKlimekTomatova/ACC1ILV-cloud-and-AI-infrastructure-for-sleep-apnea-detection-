@@ -1,6 +1,6 @@
 # Architecture Decision Records
 
-After the checkpoint 1 feedback we kept only the decisions that really shape our architecture. Small technology choices (kind, JSON schemas, synthetic data …) are in the main README.
+After the checkpoint 1 feedback we kept only the decisions that really shape our architecture. Small technology choices (kind, JSON schemas, PhysioNet data, Streamlit …) are in the main README.
 
 | # | Decision | Use cases |
 | --- | --- | --- |

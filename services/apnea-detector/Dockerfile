@@ -1,5 +1,6 @@
 # apnea-detector (UC2, UC3 alert check, UC5). Build from the REPO ROOT:
 #   docker build -f services/apnea-detector/Dockerfile -t apnea-detector .
+# kind: build with the tag apnea-detector:dev, then  kind load docker-image apnea-detector:dev --name apnea  (k8s/README.md)
 # models/model.joblib (and models/model-fast.joblib) must exist first:
 #   python services/model-trainer/train.py --no-db
 #   python services/model-trainer/train.py --no-db --model fast

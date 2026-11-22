@@ -109,8 +109,8 @@ One row per analysed night: AHI and severity for the doctor, plus how the analys
 | `model_version` | `TEXT` | string | no | same text as `model_versions.version` | e.g. `accurate-v3` |
 | `carbon_mode` | `TEXT` | string | no | `low_carbon` or `high_carbon` | carbon mode at analysis time |
 | `region` | `TEXT` | string | no | `AT`, `NO`, `PL` | where the analysis ran |
-| `kwh` | `REAL` | float | no | ≥ 0 | energy of the analysis (CodeCarbon) |
-| `gco2` | `REAL` | float | no | ≥ 0 | CO₂ of the analysis in grams (CodeCarbon) |
+| `kwh` | `REAL` | float | no | ≥ 0 | energy of the analysis (CPU time × `CPU_WATTS`) |
+| `gco2` | `REAL` | float | no | ≥ 0 | CO₂ of the analysis in grams (energy × carbon intensity of the region) |
 | `deadline_met` | `BOOLEAN` | boolean | no | | `true` if the result was ready before 08:00 |
 | `llm_summary` | `TEXT` | string | no | | short text summary for the doctor, written by the LLM |
 | `llm_model` | `TEXT` | string | no | | which LLM wrote the summary |

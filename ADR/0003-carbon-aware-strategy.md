@@ -21,9 +21,9 @@ We use option 3. The carbon-scheduler reads the carbon intensity and publishes t
 | `high_carbon`, deadline far | pause the analysis (nights wait in Kafka), HPA max 1 pod |
 | `high_carbon`, deadline close | run now with the fast model |
 
-CodeCarbon measures the CO₂ of every analysis, so we can compare the modes.
+The CO₂ of every analysed night is estimated from its CPU time, the CPU power and the carbon intensity of the region (sent in `carbon-signal`), so we can compare the modes. CodeCarbon cannot measure the millisecond steps of one minute, so we use it only for training (ADR 0005).
 
 ## Consequences
 - The system really changes its configuration (model, number of pods, timing), and we can show the CO₂ difference.
 - The deadline is always kept, because close to 08:00 the fast model runs anyway.
-- CodeCarbon only measures the energy inside our containers, not the network, storage or the rest of the node.
+- The estimate only covers the CPU energy inside our containers, not the network, storage or the rest of the node.

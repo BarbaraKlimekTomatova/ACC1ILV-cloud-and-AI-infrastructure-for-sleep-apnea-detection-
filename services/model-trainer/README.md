@@ -2,7 +2,7 @@
 
 UC7 ([Retrain model](../../diagrams/sequences/10.11_B_UC7-retrain-model_v1.md)),
 [ADR 0005](../../ADR/0005-model-lifecycle-carbon-aware-retraining.md). Owner: Barbara.
-Runs as a Kubernetes Job, not as a long-running service.
+Runs as a Kubernetes CronJob (Sunday 02:00), not as a long-running service.
 
 ```
 data/clean/ ──► train.py ──► models/model.joblib + model_versions (status pending)
@@ -44,6 +44,20 @@ docker build -f services/model-trainer/Dockerfile -t model-trainer .
 docker run --rm -v "$PWD/models:/app/models" model-trainer --no-db
 docker run --rm -v "$PWD/models:/app/models" --entrypoint python model-trainer services/model-trainer/gate.py --model-file models/model.joblib
 ```
+
+## Kubernetes (kind)
+
+[`k8s/model-trainer.yaml`](../../k8s/model-trainer.yaml): CronJob every Sunday 02:00 Europe/Vienna
+(`TRIGGERED_BY=schedule`), never two trainings at once, 1 retry. The trained files go to the
+PersistentVolumeClaim `models`. Image `model-trainer:dev`, loaded with `kind load docker-image`.
+Start a training by hand:
+
+```
+kubectl create job --from=cronjob/model-trainer model-trainer-manual
+kubectl logs -f job/model-trainer-manual
+```
+
+Start the cluster and deploy: [k8s/README.md](../../k8s/README.md).
 
 ## CI (`.github/workflows/model-trainer.yml`)
 

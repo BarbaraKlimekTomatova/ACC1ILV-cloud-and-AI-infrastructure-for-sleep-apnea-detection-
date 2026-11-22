@@ -40,11 +40,18 @@ docker compose --profile triage up --build ahi-triage
 
 or without Docker: `pip install -r services/ahi-triage/requirements.txt && python services/ahi-triage/ahi_triage.py`
 
+## Kubernetes (kind)
+
+[`k8s/ahi-triage.yaml`](../../k8s/ahi-triage.yaml): Deployment with exactly 1 pod (the open nights are in
+memory, so it does not scale out) and a Service for `/metrics`. Image `ahi-triage:dev`, loaded with
+`kind load docker-image`. The Secret `llm-api` is already mounted as `LLM_API_KEY` for the LLM summary.
+Start the cluster and deploy: [k8s/README.md](../../k8s/README.md).
+
 ## Settings (environment variables)
 
 | Variable | Default |
 |---|---|
-| `KAFKA_BOOTSTRAP` | `localhost:9092` (`kafka:29092` inside Docker) |
+| `KAFKA_BOOTSTRAP` | `localhost:9092` (`kafka:29092` in Docker and Kubernetes) |
 | `DATABASE_URL` | `postgresql://ahi_triage:dev_ahi_triage@localhost:5432/sleep_apnea` |
 | `USE_DB` | `1` (`0` = no `results`) |
 | `DEADLINE` / `TZ_DEADLINE` | `08:00` / `Europe/Vienna` |

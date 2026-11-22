@@ -1,6 +1,6 @@
 # apnea-detector
 
-UC2 (screen night), UC3 (alert check) and UC5 (carbon-aware). Owner: Barbara; the alert check (UC3) is Aliénor's.
+UC2 (screen night), UC3 (alert check) and UC5 (carbon-aware). Owner: Barbara.
 
 Everything is in `detector.py`, start with `python services/apnea-detector/detector.py`:
 
@@ -51,11 +51,18 @@ python services/apnea-detector/detector.py
 
 Docker: `docker compose --profile detector up --build apnea-detector`.
 
+## Kubernetes (kind)
+
+[`k8s/apnea-detector.yaml`](../../k8s/apnea-detector.yaml): Deployment, Service for `/metrics` and HPA 1–3 pods
+(CPU 70 %). The node affinity prefers the node with label `region` = AT; the carbon-scheduler changes it
+to the cleanest region (ADR 0004). Image `apnea-detector:dev`, loaded with `kind load docker-image`.
+Start the cluster and deploy: [k8s/README.md](../../k8s/README.md).
+
 ## Settings (environment variables)
 
 | Variable | Default |
 |---|---|
-| `KAFKA_BOOTSTRAP` | `localhost:9092` (`kafka:29092` inside Docker) |
+| `KAFKA_BOOTSTRAP` | `localhost:9092` (`kafka:29092` in Docker and Kubernetes) |
 | `DATABASE_URL` | `postgresql://apnea_detector:dev_apnea_detector@localhost:5432/sleep_apnea` |
 | `USE_DB` | `1` (`0` = no `raw_nights`) |
 | `MODEL_PATH` / `MODEL_FAST_PATH` | `models/model.joblib` / `models/model-fast.joblib` (no fast file → accurate) |
