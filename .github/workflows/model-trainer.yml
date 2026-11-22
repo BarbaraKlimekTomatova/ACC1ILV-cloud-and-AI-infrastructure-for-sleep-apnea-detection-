@@ -1,0 +1,69 @@
+# model-trainer CI: unit tests, then train on data/clean/ and run the F1 gate (UC7, ADR 0005)
+name: model-trainer
+
+on:
+  push:
+    paths:
+      - "services/model-trainer/**"
+      - "services/common/**"
+      - "tests/model-trainer/**"
+      - "data/clean/**"
+      - ".github/workflows/model-trainer.yml"
+  pull_request:
+    paths:
+      - "services/model-trainer/**"
+      - "services/common/**"
+      - "tests/model-trainer/**"
+      - "data/clean/**"
+  workflow_dispatch:
+    inputs:
+      f1_threshold:
+        description: "F1 threshold of the gate"
+        required: false
+        default: "0.80"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r services/model-trainer/requirements.txt pytest==8.3.4
+      - name: Tests
+        run: pytest tests/model-trainer
+
+  f1-gate:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r services/model-trainer/requirements.txt
+      - name: Train (no database, no CodeCarbon)
+        run: python services/model-trainer/train.py --no-db --no-carbon --version "accurate-ci-${{ github.run_number }}"
+      - name: F1 gate (fails below the threshold)
+        id: gate
+        env:
+          F1_THRESHOLD: ${{ inputs.f1_threshold || '0.80' }}
+        run: python services/model-trainer/gate.py --model-file models/model.joblib
+      - name: Summary
+        if: always()
+        run: |
+          echo "### F1 gate: ${{ steps.gate.outputs.status || 'not run' }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| version | F1 | threshold |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|---|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| ${{ steps.gate.outputs.version }} | ${{ steps.gate.outputs.f1 }} | ${{ inputs.f1_threshold || '0.80' }} |" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: model-${{ github.run_number }}
+          path: models/model.joblib
+          if-no-files-found: ignore
+          retention-days: 14

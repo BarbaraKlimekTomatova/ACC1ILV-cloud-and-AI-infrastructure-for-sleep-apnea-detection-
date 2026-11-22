@@ -41,3 +41,23 @@ def test_model_file_mode_sets_exit_code_and_github_output(tmp_path, monkeypatch)
     assert G.main(["--model-file", str(bad), "--threshold", "0.8"]) == G.REJECTED
     text = out.read_text()
     assert "status=approved" in text and "status=rejected" in text
+
+
+def test_f1_exactly_at_threshold_is_approved():
+    assert G.decide(0.80, 0.80)[0]
+
+
+def test_default_threshold_is_080(monkeypatch):
+    monkeypatch.delenv("F1_THRESHOLD", raising=False)
+    assert G.parse_args([]).threshold == 0.80
+
+
+def test_same_model_is_rejected_with_a_higher_threshold(tmp_path, monkeypatch):
+    """Like the CI run with a higher F1_THRESHOLD: a good model (F1 0.906) must fail at 0.95."""
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    model = tmp_path / "model.joblib"
+    joblib.dump({"version": "accurate-dev", "metrics": {"f1": 0.906}}, model)
+    monkeypatch.delenv("F1_THRESHOLD", raising=False)
+    assert G.main(["--model-file", str(model)]) == G.APPROVED
+    monkeypatch.setenv("F1_THRESHOLD", "0.95")
+    assert G.main(["--model-file", str(model)]) == G.REJECTED
