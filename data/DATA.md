@@ -16,7 +16,7 @@ Run them in order. Each step reads the folder of the step before.
 pip install -r requirements.txt
 python data/01_download.py          # -> data/raw/        (once, ~15 min)
 python data/02_clean.py             # -> data/clean/      (a few seconds)
-python data/03_to_kafka_messages.py # -> kafka/messages/raw-signals/ (not done yet)
+python data/03_to_kafka_messages.py # -> kafka/messages/raw-signals/ (~2 min, 71 MB, not committed)
 ```
 
 ```
@@ -56,12 +56,31 @@ ucddb010 (33.4), ucddb025 (94.1).
 No normalisation and no features here: feature engineering lives in the
 apnea-detector, so training and live use run the same code.
 
-### Step 3 – `03_to_kafka_messages.py` → `kafka/messages/raw-signals/` (not done yet)
+### Step 3 – `03_to_kafka_messages.py` → `kafka/messages/raw-signals/`
 
-Only a skeleton with one method per Kafka topic and a TODO for who builds it
-(Aliénor: `raw-signals`, `alerts`, `carbon-signal`; Barbara: `apnea-events`,
-`night-results`). The message format will be described here when it is done.
-Labels never go into a Kafka message.
+```bash
+python data/03_to_kafka_messages.py               # all 33 nights
+python data/03_to_kafka_messages.py --split demo  # only the 5 demo nights
+python data/03_to_kafka_messages.py ucddb025      # one or more nights by id
+```
+
+Writes `kafka/messages/raw-signals/<night_id>.jsonl`: **one line = one minute = one
+`raw-signals` message**, valid against
+[`raw-signals-value.schema.json`](../kafka/schemas/raw-signals-value.schema.json).
+These files are generated, so they are not committed.
+
+| Field | Value |
+|---|---|
+| `patient_id` | demo nights: `P01` … `P05` (ucddb018, 017, 013, 010, 025, as in `db/init/09_insert_demo_patients.sql`); other nights: their PhysioNet id |
+| `minute`, `is_last` | 0, 1, 2 …; `is_last = true` on the last minute only |
+| `sent_at` | fixed night start 2026-11-20 22:00 UTC + minute, so the files are reproducible; the device-simulator can put the real time when it replays |
+| `spo2` | 60 values (1 Hz), 1 decimal, NaN → `null` |
+| `flow`, `thorax`, `abdomen` | 240 values (4 Hz), 3 decimals |
+
+The file also has the builders for the other topics, so every service uses the
+same message shape (Aliénor: `raw-signals`, `alerts`, `carbon-signal`; Barbara:
+`apnea-events`, `night-results`). Labels never go into a Kafka message.
+Tests: `pytest tests/data` checks every builder and one whole night against the schemas.
 
 ## Read a night in Python
 
