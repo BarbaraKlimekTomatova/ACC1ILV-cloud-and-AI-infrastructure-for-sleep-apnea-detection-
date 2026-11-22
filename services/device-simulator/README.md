@@ -55,4 +55,4 @@ Command line first; each option also has an environment variable (for Docker / K
 
 ## Tests
 
-`pytest services/device-simulator/tests` (no Kafka needed).
+`pytest tests/device-simulator` (no Kafka needed).

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location("device_simulator", ROOT / "services" / "device-simulator" / "main.py")
 S = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(S)

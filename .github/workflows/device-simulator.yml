@@ -5,11 +5,13 @@ on:
   push:
     paths:
       - "services/device-simulator/**"
+      - "tests/device-simulator/**"
       - "kafka/schemas/**"
       - ".github/workflows/device-simulator.yml"
   pull_request:
     paths:
       - "services/device-simulator/**"
+      - "tests/device-simulator/**"
       - "kafka/schemas/**"
   workflow_dispatch:
 
@@ -25,4 +27,4 @@ jobs:
       - run: pip install -r services/device-simulator/requirements.txt pytest==8.3.4
       # the .jsonl files are not in git, so the test on a real night is skipped here
       - name: Tests
-        run: pytest services/device-simulator/tests
+        run: pytest tests/device-simulator
