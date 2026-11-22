@@ -1,5 +1,6 @@
 # Training Job (UC7, ADR 0005). Build from the REPO ROOT:
 #   docker build -f services/model-trainer/Dockerfile -t model-trainer .
+# kind: build with the tag model-trainer:dev, then  kind load docker-image model-trainer:dev --name apnea  (k8s/README.md)
 #   docker run --rm model-trainer --no-db
 # with the docker-compose Postgres on your laptop:
 #   docker run --rm -e DATABASE_URL=postgresql://model_trainer:dev_model_trainer@host.docker.internal:5432/sleep_apnea model-trainer

@@ -1,5 +1,6 @@
 # ahi-triage (UC2 steps 6-10). Build from the REPO ROOT:
 #   docker build -f services/ahi-triage/Dockerfile -t ahi-triage .
+# kind: build with the tag ahi-triage:dev, then  kind load docker-image ahi-triage:dev --name apnea  (k8s/README.md)
 # Python 3.12 (3.12-3.14 work, see requirements.txt)
 FROM python:3.12-slim
 

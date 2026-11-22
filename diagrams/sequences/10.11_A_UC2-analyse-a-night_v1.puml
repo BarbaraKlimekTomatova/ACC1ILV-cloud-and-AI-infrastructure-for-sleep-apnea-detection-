@@ -49,9 +49,8 @@ loop every minute of the night
   else high_carbon, 08:00 is close
     DET -> DET : NightFeatures +\nfast model
   end
-  DET ->> AE : event of the minute\n(+ kwh, gco2)
+  DET ->> AE : event of the minute\n(+ kwh, gco2 at is_last)
 end
-DET -> DB : saves the night\nin raw_nights
 
 AE ->> TRI : events of the night
 opt is_last = true
@@ -63,7 +62,7 @@ opt is_last = true
   NR ->> DASH : new result (then UC4)
 end
 
-note over DET : CodeCarbon measures kwh and gco2\nof the analysis
+note over DET : kwh and gco2 = CPU time x CPU_WATTS\nx carbon intensity of the region\n(raw_nights is saved by the never-paused\nalert path, UC3)
 legend bottom right
   ->> asynchronous (Kafka)
   -> synchronous call

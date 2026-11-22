@@ -1,0 +1,53 @@
+# model-trainer (UC7, ADR 0005). Owner: Barbara.
+# CronJob: every Sunday 02:00 (Vienna) train the accurate model and insert a model_versions row
+# (status pending). The F1 gate decides approved / rejected.
+# Start a run by hand:  kubectl create job --from=cronjob/model-trainer model-trainer-manual
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: model-trainer
+spec:
+  schedule: "0 2 * * 0"
+  timeZone: "Europe/Vienna"
+  concurrencyPolicy: Forbid          # never two trainings at the same time
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 1                # a failed training is retried once, not forever (energy)
+      ttlSecondsAfterFinished: 86400
+      template:
+        metadata:
+          labels: {app: model-trainer}
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: model-trainer
+              image: model-trainer:dev
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: DATABASE_URL
+                  valueFrom:
+                    secretKeyRef: {name: apnea-db, key: model-trainer}
+                - name: TRIGGERED_BY
+                  value: schedule
+                - name: REGION
+                  value: AT
+              resources:
+                requests: {cpu: 500m, memory: 512Mi}
+                limits: {cpu: "2", memory: 2Gi}
+              volumeMounts:
+                - {name: models, mountPath: /app/models}
+          volumes:
+            - name: models
+              persistentVolumeClaim: {claimName: models}
+---
+# The trained .joblib files stay here after the Job ends (artifact_path in model_versions).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: models
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests: {storage: 1Gi}

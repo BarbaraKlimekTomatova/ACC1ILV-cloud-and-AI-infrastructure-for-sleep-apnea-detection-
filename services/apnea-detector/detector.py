@@ -1,4 +1,4 @@
-"""apnea-detector (UC2, UC3 alert check, UC5). Owner: Barbara; alert check (UC3): Aliénor.
+"""apnea-detector (UC2, UC3 alert check, UC5). Owner: Barbara.
 
     python services/apnea-detector/detector.py
 

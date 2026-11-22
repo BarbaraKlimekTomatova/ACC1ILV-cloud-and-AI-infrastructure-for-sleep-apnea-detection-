@@ -1,0 +1,36 @@
+# Settings shared by apnea-detector, ahi-triage and model-trainer (owner: Barbara).
+# Kafka and PostgreSQL come from the K8s base (Aliénor): change KAFKA_BOOTSTRAP and the
+# host "postgres" if their Service names are different.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: apnea-config
+data:
+  KAFKA_BOOTSTRAP: "kafka:29092"
+  DEADLINE: "08:00"
+  TZ_DEADLINE: "Europe/Vienna"
+  DEMO_TIME: ""                  # demo clock, e.g. "23:00" (pause) or "06:30" (fast model)
+  DEFAULT_CARBON_MODE: "low_carbon"
+---
+# One database URL per service = one DB user per table owner (ADR 0007, db/init/08_create_users.sql).
+# Local development passwords only. On GKE create this Secret by hand and do not commit it.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: apnea-db
+type: Opaque
+stringData:
+  apnea-detector: "postgresql://apnea_detector:dev_apnea_detector@postgres:5432/sleep_apnea"
+  ahi-triage: "postgresql://ahi_triage:dev_ahi_triage@postgres:5432/sleep_apnea"
+  model-trainer: "postgresql://model_trainer:dev_model_trainer@postgres:5432/sleep_apnea"
+---
+# API key for the LLM summary in ahi-triage (UC2 step 8, not built yet).
+# Set the real key with:
+#   kubectl create secret generic llm-api --from-literal=api-key=<key> --dry-run=client -o yaml | kubectl apply -f -
+apiVersion: v1
+kind: Secret
+metadata:
+  name: llm-api
+type: Opaque
+stringData:
+  api-key: ""
