@@ -1,0 +1,2 @@
+# GitHub language statistics: notebooks are docs (their saved charts are big), not code
+*.ipynb linguist-documentation
