@@ -1,0 +1,9 @@
+# device-simulator: same pins as the root requirements.txt
+#
+# Python 3.12, 3.13 or 3.14 (the Docker image and CI use 3.12)
+#   * not 3.15: confluent-kafka 2.16.1 has no wheel for 3.15 yet
+# Setup (macOS / Linux):
+#   python3.12 -m venv .venv && source .venv/bin/activate
+#   pip install -r services/device-simulator/requirements.txt pytest==8.3.4
+confluent-kafka==2.16.1
+jsonschema==4.26.0

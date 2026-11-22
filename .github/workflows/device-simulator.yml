@@ -1,0 +1,28 @@
+# device-simulator CI: unit tests (no Kafka needed)
+name: device-simulator
+
+on:
+  push:
+    paths:
+      - "services/device-simulator/**"
+      - "kafka/schemas/**"
+      - ".github/workflows/device-simulator.yml"
+  pull_request:
+    paths:
+      - "services/device-simulator/**"
+      - "kafka/schemas/**"
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r services/device-simulator/requirements.txt pytest==8.3.4
+      # the .jsonl files are not in git, so the test on a real night is skipped here
+      - name: Tests
+        run: pytest services/device-simulator/tests
