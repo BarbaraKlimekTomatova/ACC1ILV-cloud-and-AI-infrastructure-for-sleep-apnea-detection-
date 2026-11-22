@@ -108,6 +108,26 @@
     "finished_at": {
       "type": "string",
       "format": "date-time"
+    },
+    "llm_summary": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "2 sentences for the doctor from the local LLM; null = no summary (UC2 A4)"
+    },
+    "llm_model": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "llm_gco2": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0
     }
   },
   "additionalProperties": false

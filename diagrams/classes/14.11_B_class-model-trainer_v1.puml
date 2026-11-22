@@ -1,0 +1,71 @@
+@startuml
+skinparam dpi 200
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam linetype ortho
+skinparam nodesep 70
+skinparam ranksep 80
+skinparam classAttributeIconSize 0
+skinparam ArrowColor #444444
+skinparam class {
+  BorderColor #444444
+  BackgroundColor #DBEAFE
+  StereotypeFontSize 11
+}
+skinparam package {
+  BorderColor #999999
+  FontStyle bold
+}
+hide circle
+hide empty members
+set separator none
+title model-trainer – class diagram
+
+package "services/model-trainer" {
+  class train <<module>> {
+    + CLASSES : list[str]
+    + load_splits(data_dir) : dict
+    + load_labels(data_dir) : dict
+    + build_set(data_dir, nights, labels, mapping) : (X, y)
+    + make_model(kind, seed) : classifier
+    + evaluate(model, X, y) : dict
+    + next_version(conn, model) : str
+    + insert_version(conn, row)
+    + main(argv)
+  }
+  class Carbon <<context manager>> {
+    + region : str
+    + kwh : float
+    + gco2 : float
+    - tracker : OfflineEmissionsTracker
+  }
+  class carbon_wait <<module>> {
+    + is_low_carbon(signal) : bool
+    + parse(value) : dict
+    + start_at_newest(consumer)
+    + wait_for_low_carbon(bootstrap, timeout_s) : dict
+  }
+  class NoLowCarbonWindow <<exception>>
+  class gate <<module>> {
+    + DEFAULT_THRESHOLD : float
+    + decide(f1, threshold, current_f1) : (bool, str)
+    + pending_row(conn, model) : tuple
+    + current_f1(conn, model) : float
+    + set_status(conn, version, status)
+    + main(argv) : int
+  }
+}
+
+package "services/common" {
+  class features <<module>> {
+    + night_features(signals) : ndarray
+  }
+}
+
+train --> Carbon
+train ..> carbon_wait : <<use>>
+carbon_wait ..> NoLowCarbonWindow : <<throws>>
+train ..> features : <<use>>
+gate ..> train : <<reads model file>>
+@enduml

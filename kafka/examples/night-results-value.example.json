@@ -14,5 +14,8 @@
   "kwh": 0.0004,
   "gco2": 0.02,
   "deadline_met": true,
-  "finished_at": "2026-11-20T05:41:13+00:00"
+  "finished_at": "2026-11-20T05:41:13+00:00",
+  "llm_summary": "The night shows moderate sleep apnea with an AHI of 15.7 events per hour, mostly hypopneas. The doctor should review this night soon.",
+  "llm_model": "llama3.2:1b",
+  "llm_gco2": 0.0009
 }

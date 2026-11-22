@@ -55,6 +55,38 @@ class FixedClock:
         return self.times.pop(0) if len(self.times) > 1 else self.times[0]
 
 
+# ---------------------------------------------------------------- LLM summary (UC2 step 8)
+def finished_night():
+    t = T.Triage(FixedClock(at(23)))
+    return [t.handle(m) for m in night()][-1]
+
+
+def test_prompt_has_the_numbers_but_no_patient():
+    r = finished_night()
+    p = T.llm_prompt(r)
+    assert "AHI: 6.0" in p and "severity: mild" in p and "routine review" in p
+    assert "minutes with apnea: 3, minutes with hypopnea: 3" in p
+    assert "P03" not in p and "ucddb013" not in p          # GDPR: no id leaves the service
+
+
+def test_summary_and_co2_of_the_llm_call():
+    r = finished_night()                                   # night: 0.00002 kWh, 0.0007 g -> 35 g/kWh
+    fake = lambda prompt: {"response": " Mild sleep apnea. \n", "total_duration": 2_000_000_000}
+    s = T.add_summary(r, generate=fake)
+    assert s["llm_summary"] == "Mild sleep apnea." and s["llm_model"] == T.LLM_MODEL
+    assert s["llm_gco2"] == pytest.approx(2 * T.LLM_WATTS / 3.6e6 * 35, rel=1e-3)
+    assert errors("night-results", s) == []
+
+
+def test_no_llm_answer_saves_the_result_without_summary():
+    def down(prompt):
+        raise OSError("connection refused")
+    s = T.add_summary(finished_night(), generate=down)       # UC2 A4
+    assert s["llm_summary"] is None and s["llm_model"] is None and s["llm_gco2"] is None
+    assert s["ahi"] == 6.0
+    assert errors("night-results", s) == []
+
+
 # ---------------------------------------------------------------- AHI and severity
 def test_severity_limits():
     assert [T.severity(a) for a in (0, 4.9, 5, 14.9, 15, 29.9, 30, 80)] == \

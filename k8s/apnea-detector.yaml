@@ -1,6 +1,6 @@
 # apnea-detector (UC2, UC3 alert check, UC5). Owner: Barbara.
 # Deployment + Service for Prometheus + HPA 1-3 pods (ADR 0003).
-# The image contains models/model.joblib and models/model-fast.joblib (see services/apnea-detector/Dockerfile).
+# The image contains models/model.joblib (see services/apnea-detector/Dockerfile).
 apiVersion: apps/v1
 kind: Deployment
 metadata:

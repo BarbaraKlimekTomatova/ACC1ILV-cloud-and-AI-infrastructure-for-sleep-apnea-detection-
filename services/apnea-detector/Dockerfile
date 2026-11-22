@@ -1,9 +1,8 @@
 # apnea-detector (UC2, UC3 alert check, UC5). Build from the REPO ROOT:
 #   docker build -f services/apnea-detector/Dockerfile -t apnea-detector .
 # kind: build with the tag apnea-detector:dev, then  kind load docker-image apnea-detector:dev --name apnea  (k8s/README.md)
-# models/model.joblib (and models/model-fast.joblib) must exist first:
+# models/model.joblib must exist first (the fast model is a rule, services/common/fast_model.py):
 #   python services/model-trainer/train.py --no-db
-#   python services/model-trainer/train.py --no-db --model fast
 # Python 3.12 (3.12-3.14 work, see requirements.txt)
 FROM python:3.12-slim
 
@@ -19,7 +18,6 @@ COPY models/ models/
 
 ENV PYTHONPATH=/app/services/common \
     MODEL_PATH=/app/models/model.joblib \
-    MODEL_FAST_PATH=/app/models/model-fast.joblib \
     SCHEMA_DIR=/app/kafka/schemas \
     KAFKA_BOOTSTRAP=kafka:29092 \
     DATABASE_URL=postgresql://apnea_detector:dev_apnea_detector@postgres:5432/sleep_apnea \

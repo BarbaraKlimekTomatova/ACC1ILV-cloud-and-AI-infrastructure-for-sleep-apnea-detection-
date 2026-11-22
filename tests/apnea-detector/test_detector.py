@@ -95,7 +95,12 @@ def test_high_carbon_pause_at_night_fast_in_the_morning():
     assert D.decide("high_carbon", at(5, 59)) == D.PAUSE
     assert D.decide("high_carbon", at(6, 0)) == D.FAST
     assert D.decide("high_carbon", at(7, 55)) == D.FAST
-    assert D.decide("high_carbon", at(9)) == D.PAUSE            # next 08:00 is tomorrow
+
+
+def test_high_carbon_after_the_deadline_finishes_late_nights_now():
+    assert D.decide("high_carbon", at(8, 30)) == D.FAST         # late night: do not wait for tomorrow
+    assert D.decide("high_carbon", at(19, 59)) == D.FAST
+    assert D.decide("high_carbon", at(20, 0)) == D.PAUSE        # new night: 08:00 tomorrow is far
 
 
 def test_demo_clock():
@@ -147,6 +152,16 @@ def test_wrong_features_are_refused():
     b["features"] = b["features"][::-1]
     with pytest.raises(ValueError):
         D.Model(b, D.ACCURATE)
+
+
+def test_fast_rule_is_used_as_soon_as_it_is_written(monkeypatch):
+    assert D.load_fast_model() is None or D.load_fast_model().kind == D.FAST   # skeleton -> None
+    monkeypatch.setattr(D.FM, "predict", lambda row: ("apnea_or_hypopnea", 0.8))
+    fast = D.load_fast_model()
+    assert fast.kind == D.FAST and fast.version == D.FM.VERSION
+    a = D.Analyzer(D.Model(fake_bundle(), D.ACCURATE), fast)
+    msg = a.process(raw_minute(0), D.FAST, HIGH)
+    assert (msg["model"], msg["event"], msg["model_version"]) == ("fast", "apnea_or_hypopnea", "rule-v1")
 
 
 def test_without_fast_model_accurate_is_used():

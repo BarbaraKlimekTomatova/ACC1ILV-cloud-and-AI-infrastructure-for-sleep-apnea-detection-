@@ -19,8 +19,11 @@ stored only when every night that started at or before it is saved in results. A
 restart the unfinished nights are read again from Kafka; a night that is already in
 results is not saved or sent twice.
 
-TODO (UC2 step 8): short LLM summary for the doctor (results.llm_summary, llm_model,
-llm_gco2). Until then these columns stay empty; UC2 A4 allows a result without summary.
+LLM summary (UC2 step 8, ADR 0009): two sentences for the doctor from a small LOCAL model
+(Ollama, like course exercise 7), so no patient data leaves our system. The prompt has only
+numbers, no patient id or name. CO2 of the call = Ollama's run time x LLM_WATTS x the carbon
+intensity of the night (ADR 0010). If the LLM does not answer, the result is saved without
+summary (UC2 A4).
 """
 
 import json
@@ -28,6 +31,8 @@ import logging
 import os
 import signal
 import threading
+import time
+import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -46,6 +51,12 @@ SCHEMA_DIR = Path(env("SCHEMA_DIR", str(ROOT / "kafka" / "schemas")))
 DEADLINE = env("DEADLINE", "08:00")
 TZ = ZoneInfo(env("TZ_DEADLINE", "Europe/Vienna"))
 DEMO_TIME = env("DEMO_TIME") or None                                 # same demo clock as the detector
+USE_LLM = env("USE_LLM", "1") == "1"                                 # 0 = no summary
+LLM_URL = env("LLM_URL", "http://localhost:11434")                   # Ollama; host.docker.internal:11434 from Docker
+LLM_MODEL = env("LLM_MODEL", "llama3.2:1b")                          # small model, ~1.3 GB
+LLM_TIMEOUT_S = float(env("LLM_TIMEOUT_S", "60"))
+LLM_WATTS = float(env("LLM_WATTS", "30"))                            # power of the machine running Ollama (estimate)
+DEFAULT_CARBON_INTENSITY = float(env("DEFAULT_CARBON_INTENSITY", "300"))  # gCO2/kWh if the night has none
 
 EVENTS = ("apnea", "hypopnea", "apnea_or_hypopnea")                  # "normal" is not an event
 SEVERITY = ((5, "normal"), (15, "mild"), (30, "moderate"))           # AHI below the limit -> name
@@ -182,6 +193,59 @@ class Triage:
         return night.result(self.clock.now())
 
 
+# ---------------------------------------------------------------- LLM summary (UC2 step 8)
+def llm_prompt(result):
+    """The prompt for the LLM. Only numbers of the night: no patient id, no name (GDPR).
+    A small model is good at wording, not at deciding, so the urgency is decided here."""
+    if result.get("apnea_count") is None:                 # fast model: no apnea/hypopnea split
+        events = f"- minutes with apnea or hypopnea: {result['event_count']}"
+    else:
+        events = (f"- minutes with apnea: {result['apnea_count']}, "
+                  f"minutes with hypopnea: {result['hypopnea_count']}")
+    urgency = "review soon" if result["severity"] in ("moderate", "severe") else "routine review"
+    return ("Facts about one night of a home sleep apnea screening:\n"
+            f"- recording: {result['minutes'] / 60:.1f} hours\n"
+            f"- AHI: {result['ahi']} events per hour\n"
+            f"- severity: {result['severity']}\n"
+            f"{events}\n\n"
+            "Write exactly 2 sentences for the sleep doctor. Sentence 1: repeat the AHI and the "
+            f"severity. Sentence 2: say how urgent a review is ({urgency}). Use only the facts above. "
+            "No greeting, no title, no diagnosis, no therapy.")
+
+
+def night_carbon_intensity(result):
+    """gCO2/kWh of the night, from the detector's kwh and gco2 (ADR 0010)."""
+    kwh, gco2 = result.get("kwh"), result.get("gco2")
+    return gco2 / kwh if kwh and gco2 is not None else DEFAULT_CARBON_INTENSITY
+
+
+def ollama_generate(prompt, url=None, model=None, timeout=None):
+    """One call to Ollama's /api/generate (no streaming) -> its JSON answer."""
+    body = json.dumps({"model": model or LLM_MODEL, "prompt": prompt, "stream": False,
+                       "options": {"temperature": 0, "num_predict": 120}}).encode()
+    req = urllib.request.Request(f"{url or LLM_URL}/api/generate", data=body,
+                                 headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=timeout or LLM_TIMEOUT_S) as r:
+        return json.loads(r.read())
+
+
+def add_summary(result, generate=ollama_generate):
+    """result + llm_summary, llm_model, llm_gco2. If the LLM fails: all three None (UC2 A4)."""
+    t0 = time.monotonic()
+    try:
+        answer = generate(llm_prompt(result))
+        text = answer["response"].strip()
+        if not text:
+            raise ValueError("empty answer")
+    except Exception as e:  # noqa: BLE001  no summary must not stop the result
+        log.warning("no LLM summary for %s: %s", result["night_id"], str(e)[:200])
+        return {**result, "llm_summary": None, "llm_model": None, "llm_gco2": None}
+    seconds = answer.get("total_duration", 0) / 1e9 or (time.monotonic() - t0)   # Ollama gives ns
+    kwh = seconds * LLM_WATTS / 3.6e6
+    return {**result, "llm_summary": text, "llm_model": LLM_MODEL,
+            "llm_gco2": round(kwh * night_carbon_intensity(result), 6)}
+
+
 # ================================================================ 2. KAFKA, DATABASE, METRICS
 # confluent_kafka and psycopg are imported inside the functions, so the logic above
 # (and its tests) also works where they are not installed.
@@ -191,6 +255,8 @@ AHI = Histogram("triage_ahi", "AHI of finished nights", buckets=(5, 15, 30, 45, 
 OPEN = Gauge("triage_open_nights", "nights in progress")
 DEADLINE_MISSED = Counter("triage_deadline_missed_total", "nights finished after 08:00")
 BAD_MESSAGES = Counter("triage_bad_messages_total", "apnea-events that failed the schema")
+LLM_FAILED = Counter("triage_llm_failed_total", "nights saved without LLM summary (UC2 A4)")
+LLM_GCO2 = Counter("triage_llm_gco2_total", "gCO2 of the LLM summaries (estimate)")
 
 stop = threading.Event()
 EVENTS_SCHEMA = Draft202012Validator(json.loads((SCHEMA_DIR / "apnea-events-value.schema.json").read_text()))
@@ -200,7 +266,7 @@ class Results:
     """Table results (db/init/03_results.sql), written only by ahi-triage."""
 
     COLUMNS = ("night_id", "ahi", "severity", "event_count", "model", "model_version", "carbon_mode",
-               "region", "kwh", "gco2", "deadline_met")
+               "region", "kwh", "gco2", "deadline_met", "llm_summary", "llm_model", "llm_gco2")
 
     def __init__(self, url):
         import psycopg
@@ -213,7 +279,7 @@ class Results:
     def save(self, result):
         self.conn.execute(
             f"INSERT INTO results ({', '.join(self.COLUMNS)}) VALUES ({', '.join(['%s'] * len(self.COLUMNS))})",
-            [result[c] for c in self.COLUMNS])
+            [result.get(c) for c in self.COLUMNS])
 
 
 def loop(db):
@@ -245,6 +311,12 @@ def loop(db):
                 offsets.done(p, event["night_id"])
             result = triage.handle(event)
             if result is not None:
+                if USE_LLM:
+                    result = add_summary(result)       # takes a few seconds, the offset waits for it
+                    if result["llm_summary"] is None:
+                        LLM_FAILED.inc()
+                    else:
+                        LLM_GCO2.inc(result["llm_gco2"])
                 if db:
                     db.save(result)                    # a DB error stops the pod; Kafka keeps the night
                 producer.produce("night-results", key=result["patient_id"],

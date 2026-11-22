@@ -26,8 +26,18 @@ clinical AHI.
 past a message when its night is saved in `results`. After a restart the unfinished nights are
 read again; a night that is already in `results` is not saved or sent twice.
 
-**TODO (UC2 step 8):** short LLM summary for the doctor (`llm_summary`, `llm_model`,
-`llm_gco2`). Until then these columns stay empty (UC2 A4: the result is saved without summary).
+**LLM summary (UC2 step 8, [ADR 0009](../../ADR/0009-llm-summary-with-a-local-model.md)):** at the end of a night
+a small **local** model (Ollama, `llama3.2:1b`) writes 2 sentences for the doctor (`llm_summary`, `llm_model`).
+The prompt has only numbers, no patient id or name, and nothing leaves the machine. The urgency
+("review soon" for moderate and severe) is decided in our code, the model only words it.
+`llm_gco2` = Ollama's run time × `LLM_WATTS` × the carbon intensity of the night. If Ollama does not
+answer, the result is saved and sent without summary (UC2 A4).
+
+```
+brew install ollama            # or https://ollama.com/download
+ollama serve
+ollama pull llama3.2:1b
+```
 
 **Python 3.12, 3.13 or 3.14** (Docker and CI use 3.12); not 3.15 (no confluent-kafka wheel yet).
 
@@ -44,7 +54,7 @@ or without Docker: `pip install -r services/ahi-triage/requirements.txt && pytho
 
 [`k8s/ahi-triage.yaml`](../../k8s/ahi-triage.yaml): Deployment with exactly 1 pod (the open nights are in
 memory, so it does not scale out) and a Service for `/metrics`. Image `ahi-triage:dev`, loaded with
-`kind load docker-image`. The Secret `llm-api` is already mounted as `LLM_API_KEY` for the LLM summary.
+`kind load docker-image`. `LLM_URL` in the ConfigMap points to the laptop's Ollama (`host.docker.internal:11434`).
 Start the cluster and deploy: [k8s/README.md](../../k8s/README.md).
 
 ## Settings (environment variables)
@@ -57,6 +67,9 @@ Start the cluster and deploy: [k8s/README.md](../../k8s/README.md).
 | `DEADLINE` / `TZ_DEADLINE` | `08:00` / `Europe/Vienna` |
 | `DEMO_TIME` | empty = real time |
 | `METRICS_PORT` | `8001` (Prometheus `/metrics`; the detector uses 8000) |
+| `USE_LLM` | `1` (`0` = no summary) |
+| `LLM_URL` / `LLM_MODEL` | `http://localhost:11434` (`http://host.docker.internal:11434` from Docker) / `llama3.2:1b` |
+| `LLM_TIMEOUT_S` / `LLM_WATTS` | `60` / `30` (power of the machine running Ollama, for `llm_gco2`) |
 
 ## Tests
 

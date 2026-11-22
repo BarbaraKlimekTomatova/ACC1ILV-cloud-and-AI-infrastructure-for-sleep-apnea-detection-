@@ -37,6 +37,7 @@ from prometheus_client import Counter, Gauge, start_http_server
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "services" / "common"))
+import fast_model as FM  # noqa: E402   services/common/fast_model.py (Aliénor)
 import features as F  # noqa: E402
 
 # ---------------------------------------------------------------- settings
@@ -45,7 +46,6 @@ KAFKA = env("KAFKA_BOOTSTRAP", "localhost:9092")                     # kafka:290
 DATABASE_URL = env("DATABASE_URL", "postgresql://apnea_detector:dev_apnea_detector@localhost:5432/sleep_apnea")
 USE_DB = env("USE_DB", "1") == "1"
 MODEL_PATH = env("MODEL_PATH", str(ROOT / "models" / "model.joblib"))
-MODEL_FAST_PATH = env("MODEL_FAST_PATH", str(ROOT / "models" / "model-fast.joblib"))
 SCHEMA_DIR = Path(env("SCHEMA_DIR", str(ROOT / "kafka" / "schemas")))
 DEFAULT_CARBON = {"mode": env("DEFAULT_CARBON_MODE", "low_carbon"),
                   "carbon_intensity": float(env("DEFAULT_CARBON_INTENSITY", "300")),
@@ -56,6 +56,7 @@ ALERT_THRESHOLD = float(env("ALERT_THRESHOLD", "80"))
 MIN_VALID_SPO2 = float(env("MIN_VALID_SPO2", "50"))                  # lower = sensor artefact
 DEADLINE = env("DEADLINE", "08:00")
 DEADLINE_MARGIN_MIN = int(env("DEADLINE_MARGIN_MIN", "120"))
+NIGHT_START = env("NIGHT_START", "20:00")                             # nights start after this time
 TZ = ZoneInfo(env("TZ_DEADLINE", "Europe/Vienna"))
 CPU_WATTS = float(env("CPU_WATTS", "15"))
 
@@ -112,13 +113,19 @@ def decide(mode, now):
     low_carbon                   -> accurate model
     high_carbon, 08:00 is far    -> pause (the minutes wait in Kafka)
     high_carbon, 08:00 is close  -> fast model (close = DEADLINE_MARGIN_MIN, default 2 h)
+    high_carbon, 08:00 is over   -> fast model: the night is already late, waiting for
+                                    tomorrow's deadline would make it later (until NIGHT_START)
     """
     if mode == "low_carbon":
         return ACCURATE
     h, m = (int(x) for x in DEADLINE.split(":"))
     deadline = now.replace(hour=h, minute=m, second=0, microsecond=0)
+    nh, nm = (int(x) for x in NIGHT_START.split(":"))
+    night_start = now.replace(hour=nh, minute=nm, second=0, microsecond=0)
+    if deadline <= now < night_start:
+        return FAST                                  # late night (after 08:00): finish it now
     if deadline <= now:
-        deadline += timedelta(days=1)                # after 08:00 -> tomorrow 08:00
+        deadline += timedelta(days=1)                # evening -> tomorrow 08:00
     return FAST if deadline - now <= timedelta(minutes=DEADLINE_MARGIN_MIN) else PAUSE
 
 
@@ -145,6 +152,24 @@ class Model:
             return ("apnea_or_hypopnea", p_event) if p_event >= 0.5 else ("normal", 1.0 - p_event)
         event = max(p, key=p.get)
         return event, p[event]
+
+
+class RuleModel:
+    """The fast model (ADR 0003): a rule without training, services/common/fast_model.py (Aliénor)."""
+
+    kind, version = FAST, FM.VERSION
+
+    def predict(self, row):
+        return FM.predict(row)
+
+
+def load_fast_model():
+    """RuleModel, or None while fast_model.predict() is still a skeleton (then accurate is used)."""
+    try:
+        FM.predict({f: 0.0 for f in F.FEATURES})
+    except NotImplementedError:
+        return None
+    return RuleModel()
 
 
 # ---------------------------------------------------------------- analysis (UC2)
@@ -397,10 +422,10 @@ def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     start_http_server(int(env("METRICS_PORT", "8000")))
     accurate = Model.load(MODEL_PATH, ACCURATE)
-    fast = Model.load(MODEL_FAST_PATH, FAST) if Path(MODEL_FAST_PATH).exists() else None
+    fast = load_fast_model()
     clock = Clock(DEMO_TIME)
     log.info("models: accurate %s, fast %s; local time %s%s", accurate.version,
-             fast.version if fast else "(missing, accurate is used)",
+             fast.version if fast else "(fast_model.py not ready, accurate is used)",
              clock.now().strftime("%H:%M"), " (DEMO_TIME)" if DEMO_TIME else "")
 
     producer = Producer({"bootstrap.servers": KAFKA, "linger.ms": 5, "enable.idempotence": True})

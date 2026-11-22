@@ -1,8 +1,10 @@
-"""Train the apnea model (UC7, ADR 0005): accurate (default) or fast.
+"""Train the accurate apnea model (UC7, ADR 0005).
 
     python services/model-trainer/train.py                 # accurate, save, write model_versions
     python services/model-trainer/train.py --no-db         # same, but no database
-    python services/model-trainer/train.py --model fast    # the fast model (high_carbon, ADR 0003)
+
+The fast model for high_carbon (ADR 0003) is not trained here: it is a rule without
+training, services/common/fast_model.py (owner: Aliénor).
 
 What it does
   1. Builds the per-minute features of every TRAIN night (data/clean/splits.json)
@@ -26,6 +28,7 @@ so the detector can check the feature order before it predicts.
 import argparse
 import csv
 import json
+import logging
 import os
 import sys
 import time
@@ -35,20 +38,16 @@ from pathlib import Path
 import joblib
 import numpy as np
 from sklearn.ensemble import HistGradientBoostingClassifier
-from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report, f1_score, precision_score, recall_score
-from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import StandardScaler
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "services" / "common"))
 import features as F  # noqa: E402
 
 CLASSES = ["normal", "apnea", "hypopnea"]          # model output, index = class id
-MODELS = ("accurate", "fast")
+MODELS = ("accurate",)                              # the fast model is a rule: services/common/fast_model.py
 DEFAULT_DATA = ROOT / "data" / "clean"
-DEFAULT_OUT = {"accurate": ROOT / "models" / "model.joblib",
-               "fast": ROOT / "models" / "model-fast.joblib"}
+DEFAULT_OUT = {"accurate": ROOT / "models" / "model.joblib"}
 DEFAULT_DB = "postgresql://model_trainer:dev_model_trainer@localhost:5432/sleep_apnea"
 # model_versions.region -> CodeCarbon country code (grid CO2 intensity)
 REGION_ISO = {"AT": "AUT", "NO": "NOR", "PL": "POL"}
@@ -100,12 +99,7 @@ def build_set(data_dir, nights, labels, mapping):
 # ------------------------------------------------------------------ model
 def make_model(kind="accurate", seed=0):
     """accurate: gradient-boosted trees, on our data a bit better than a random
-        forest (held-out F1 0.91 vs 0.89).
-    fast: scaled logistic regression, one dot product per minute, so it needs
-        almost no CPU (used in high_carbon close to the 08:00 deadline)."""
-    if kind == "fast":
-        return make_pipeline(StandardScaler(), LogisticRegression(
-            class_weight="balanced", max_iter=2000, random_state=seed))
+        forest (held-out F1 0.91 vs 0.89)."""
     return HistGradientBoostingClassifier(
         max_iter=300, learning_rate=0.05, class_weight="balanced", random_state=seed)
 
@@ -200,7 +194,7 @@ def parse_args(argv=None):
     p.add_argument("--data-dir", default=str(DEFAULT_DATA))
     p.add_argument("--model", default=os.environ.get("MODEL", "accurate"), choices=MODELS)
     p.add_argument("--out", default=os.environ.get("MODEL_PATH"),
-                   help="default models/model.joblib (accurate) or models/model-fast.joblib (fast)")
+                   help="default models/model.joblib")
     p.add_argument("--db-url", default=os.environ.get("DATABASE_URL", DEFAULT_DB))
     p.add_argument("--no-db", action="store_true", help="do not write model_versions")
     p.add_argument("--no-carbon", action="store_true", help="skip CodeCarbon (tests)")
@@ -209,11 +203,26 @@ def parse_args(argv=None):
                    choices=["schedule", "manual", "drift"])
     p.add_argument("--version", help="override the version name (default: next accurate-vN)")
     p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--wait-low-carbon", action="store_true",
+                   default=os.environ.get("WAIT_LOW_CARBON") == "1",
+                   help="wait for low_carbon on the carbon-signal topic first (UC7 step 2)")
+    p.add_argument("--max-wait-s", type=float, default=float(os.environ.get("MAX_WAIT_S", 6 * 3600)),
+                   help="give up after this many seconds without low_carbon (UC7 A2)")
     return p.parse_args(argv)
 
 
 def main(argv=None):
     a = parse_args(argv)
+    if a.wait_low_carbon:                    # UC7 step 2: train only in a low-carbon window
+        from carbon_wait import NoLowCarbonWindow, wait_for_low_carbon
+        logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+        try:
+            signal = wait_for_low_carbon(timeout_s=a.max_wait_s)
+        except NoLowCarbonWindow as e:
+            print(f"no training: {e}, the next run tries again")   # UC7 A2, exit 0
+            return None
+        a.region = signal["region"]          # model_versions.region = where it was trained
+        print(f"low_carbon in {a.region} ({signal['carbon_intensity']:.0f} gCO2/kWh), training now")
     splits = load_splits(a.data_dir)
     labels = load_labels(a.data_dir)
     train = sorted(n for n, s in splits.items() if s == "train")

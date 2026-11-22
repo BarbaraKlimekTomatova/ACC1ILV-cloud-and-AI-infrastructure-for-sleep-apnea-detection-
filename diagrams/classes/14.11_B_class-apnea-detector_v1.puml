@@ -1,0 +1,92 @@
+@startuml
+skinparam dpi 200
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam linetype ortho
+skinparam nodesep 70
+skinparam ranksep 80
+skinparam classAttributeIconSize 0
+skinparam ArrowColor #444444
+skinparam class {
+  BorderColor #444444
+  BackgroundColor #DBEAFE
+  StereotypeFontSize 11
+}
+skinparam package {
+  BorderColor #999999
+  FontStyle bold
+}
+hide circle
+hide empty members
+set separator none
+title apnea-detector – class diagram
+
+package "services/apnea-detector/detector.py" {
+  class detector <<module>> {
+    + alert_for(raw) : dict
+    + decide(mode, now) : str
+    + load_fast_model() : RuleModel
+    + alert_loop(producer, db)
+    + carbon_loop()
+    + analysis_loop(producer, analyzer, clock)
+    + main()
+  }
+  class Analyzer {
+    + region : str
+    - models : dict
+    - nights : dict
+    + process(raw, action, carbon) : dict
+  }
+  interface "model" as IModel <<interface>> {
+    + kind : str
+    + version : str
+    + predict(row) : (event, probability)
+  }
+  class Model {
+    - model : sklearn classifier
+    - columns : list[str]
+    + {static} load(path, kind) : Model
+  }
+  class RuleModel
+  class RawNights {
+    - conn : Connection
+    - known : set
+    + ensure_night(night_id, patient_id, source)
+    + append_minute(raw)
+  }
+  class Clock {
+    - offset : timedelta
+    + now() : datetime
+  }
+}
+
+package "services/common" {
+  class NightFeatures {
+    - spo2_hist : deque
+    - amp_hist : dict
+    - prev : dict
+    + add_minute(spo2, flow, thorax, abdomen) : dict
+  }
+  class features <<module>> {
+    + {field} FEATURES : list[str]
+    + to_vector(row) : ndarray
+  }
+  class fast_model <<module>> {
+    + VERSION : str
+    + predict(features) : (event, probability)
+  }
+}
+
+detector --> Analyzer
+detector --> RawNights
+detector --> Clock
+Analyzer o-- "1..2" IModel
+Analyzer *-- "0..*" NightFeatures
+IModel <|.. Model
+IModel <|.. RuleModel
+RuleModel ..> fast_model : <<use>>
+Model ..> features : <<use>>
+NightFeatures -[hidden]right- features
+features -[hidden]right- fast_model
+@enduml

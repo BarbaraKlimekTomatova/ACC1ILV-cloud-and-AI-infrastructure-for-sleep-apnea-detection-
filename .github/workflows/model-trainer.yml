@@ -8,6 +8,7 @@ on:
       - "services/common/**"
       - "tests/model-trainer/**"
       - "data/clean/**"
+      - "kafka/schemas/**"
       - ".github/workflows/model-trainer.yml"
   pull_request:
     paths:
@@ -15,6 +16,7 @@ on:
       - "services/common/**"
       - "tests/model-trainer/**"
       - "data/clean/**"
+      - "kafka/schemas/**"
   workflow_dispatch:
     inputs:
       f1_threshold:

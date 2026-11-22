@@ -97,14 +97,6 @@ def test_main_trains_and_saves_without_db(data_dir, tmp_path):
         assert 0 <= row[k] <= 1
 
 
-def test_fast_model_trains_and_has_its_own_file(data_dir, tmp_path, monkeypatch):
-    monkeypatch.setattr(T, "DEFAULT_OUT", {"accurate": tmp_path / "model.joblib",
-                                           "fast": tmp_path / "model-fast.joblib"})
-    row = T.main(["--data-dir", str(data_dir), "--model", "fast", "--no-db", "--no-carbon"])
-    assert row["model"] == "fast" and row["version"] == "fast-dev"
-    assert (tmp_path / "model-fast.joblib").exists() and not (tmp_path / "model.joblib").exists()
-
-
 def test_version_row_matches_table_columns():
     cols = ["version", "model", "trained_at", "train_nights", "doctor_corrections_used",
             "triggered_by", "f1", "precision_score", "recall_score", "kwh", "gco2",

@@ -203,7 +203,8 @@ def build_night_result_message(patient_id, night_id, ahi, severity,
                                hypopnea_count=None, minutes=None,
                                model=None, model_version=None,
                                carbon_mode=None, region=None,
-                               kwh=None, gco2=None, deadline_met=None):
+                               kwh=None, gco2=None, deadline_met=None,
+                               llm_summary=None, llm_model=None, llm_gco2=None):
     """Topic night-results, AHI and severity of one finished night.
 
     The same fields as the table results, so ahi-triage can send the row
@@ -230,6 +231,9 @@ def build_night_result_message(patient_id, night_id, ahi, severity,
         "gco2": gco2,
         "deadline_met": deadline_met,      # ready before 08:00?
         "finished_at": datetime.now(timezone.utc).isoformat(),
+        "llm_summary": llm_summary,        # 2 sentences from the local LLM (ADR 0009), None = no summary
+        "llm_model": llm_model,
+        "llm_gco2": llm_gco2,
     }
 
 
