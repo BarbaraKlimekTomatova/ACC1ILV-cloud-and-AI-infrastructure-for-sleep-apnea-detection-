@@ -11,5 +11,7 @@ After the checkpoint 1 feedback we kept only the decisions that really shape our
 | [0005](0005-model-lifecycle-carbon-aware-retraining.md) | Model lifecycle – carbon-aware retraining | UC7, UC2 |
 | [0006](0006-monitoring-system-and-ai-behaviour.md) | Monitoring of system health and AI behaviour | UC6 |
 | [0007](0007-one-postgresql-database-with-table-ownership.md) | One PostgreSQL database, each table owned by one service | UC1–UC4 |
+| [0008](0008-one-feature-code-for-training-and-live.md) | One feature code for training and live analysis | UC2, UC7 |
+| [0009](0009-llm-summary-with-a-local-model.md) | LLM summary for the doctor with a small local model | UC2, UC4 |
 
 Each ADR has: context, options, decision and consequences (including the sustainability trade-offs).

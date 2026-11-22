@@ -1,0 +1,66 @@
+@startuml
+skinparam shadowing false
+skinparam dpi 200
+skinparam defaultFontName Arial
+skinparam defaultFontSize 15
+skinparam sequenceMessageAlign center
+skinparam sequence {
+  LifeLineBorderColor #BBBBBB
+  ParticipantBorderColor #666666
+  ParticipantBackgroundColor #FFFFFF
+  ActorBorderColor #666666
+  ActorBackgroundColor #FFFFFF
+  GroupBorderColor #999999
+  ArrowColor #444444
+}
+skinparam database {
+  BorderColor #666666
+  BackgroundColor #FFFFFF
+}
+skinparam queue {
+  BorderColor #666666
+  BackgroundColor #FFFFFF
+}
+skinparam note {
+  BorderColor #BBBBBB
+  BackgroundColor #FFFFFF
+}
+hide footbox
+title UC6 – Monitor system & footprint
+
+actor "Operator / Team" as OP
+participant "apnea-detector\n/metrics :8000" as DET
+participant "ahi-triage\n/metrics :8001" as TRI
+participant "Kafka exporter\n(lag)" as KE
+participant "Prometheus" as PROM
+participant "Grafana" as GRAF
+participant "model-trainer\n(UC7)" as TR
+
+loop every 15 s
+  PROM -> DET : GET /metrics
+  DET --> PROM : minutes per model and event,\npaused, carbon intensity, alerts, gCO2
+  PROM -> TRI : GET /metrics
+  TRI --> PROM : nights per severity, AHI,\ndeadline missed, LLM gCO2
+  PROM -> KE : GET /metrics
+  KE --> PROM : nights waiting in Kafka (lag)
+end
+
+OP -> GRAF : open dashboards
+GRAF -> PROM : PromQL queries
+PROM --> GRAF : time series
+GRAF --> OP : "System health" and "AI & carbon"
+
+PROM -> PROM : alert rules (every minute)
+alt AI behaviour drifts (events per hour or confidence\nvery different from last week)
+  PROM -> OP : warning: model drift
+  OP -> TR : start retraining, triggered_by = drift
+  note right of TR : continues in UC7\n(wait for low_carbon, F1 gate)
+else a service does not answer (up = 0) or a deadline is missed
+  PROM -> OP : warning: system health
+end
+
+legend bottom right
+  -> synchronous call
+  --> response
+endlegend
+@enduml

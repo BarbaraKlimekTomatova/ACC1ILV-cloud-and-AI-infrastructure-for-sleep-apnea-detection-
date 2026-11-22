@@ -1,0 +1,74 @@
+@startuml
+skinparam dpi 200
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam linetype ortho
+skinparam nodesep 70
+skinparam ranksep 80
+skinparam classAttributeIconSize 0
+skinparam ArrowColor #444444
+skinparam class {
+  BorderColor #444444
+  BackgroundColor #DBEAFE
+  StereotypeFontSize 11
+}
+skinparam package {
+  BorderColor #999999
+  FontStyle bold
+}
+hide circle
+hide empty members
+set separator none
+title ahi-triage – class diagram
+
+package "services/ahi-triage/ahi_triage.py" {
+  class ahi_triage <<module>> {
+    + severity(ahi) : str
+    + next_deadline(start) : datetime
+    + llm_prompt(result) : str
+    + add_summary(result, generate) : dict
+    + ollama_generate(prompt) : dict
+    + loop(db)
+    + main()
+  }
+  class Triage {
+    - nights : dict
+    - finished : set
+    - already_saved : function
+    + is_finished(night_id) : bool
+    + handle(msg) : dict
+  }
+  class Night {
+    + started : datetime
+    - events : dict
+    - last : dict
+    + add(msg)
+    + result(finished) : dict
+  }
+  class Offsets {
+    - first : dict
+    - last : dict
+    + seen(partition, offset, night_id)
+    + done(partition, night_id)
+    + safe(partition) : int
+  }
+  class Results {
+    + COLUMNS : tuple
+    - conn : Connection
+    + exists(night_id) : bool
+    + save(result)
+  }
+  class Clock {
+    - offset : timedelta
+    + now() : datetime
+  }
+}
+
+ahi_triage --> Triage
+ahi_triage --> Offsets
+ahi_triage --> Results
+Triage o-down- "1" Clock
+Triage *-down- "0..*" Night
+Night .up.> ahi_triage
+@enduml

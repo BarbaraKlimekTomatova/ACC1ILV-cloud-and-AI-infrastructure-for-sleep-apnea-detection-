@@ -91,14 +91,31 @@ After the checkpoint 1 feedback we are redrawing all diagrams in **PlantUML** wi
 - use case diagram (actors and use cases) – [`diagrams/usecases/`](diagrams/usecases/10.11_B_use-cases_v1.md)
 - database schema (ER diagram) – `diagrams/db_schema/`, described in [doc/database-tables.md](doc/database-tables.md)
 - one sequence diagram for each use case, with its description – [`diagrams/sequences/`](diagrams/sequences/)
+- one class diagram for each service – [`diagrams/classes/`](diagrams/classes/README.md)
 - component diagram with interfaces
 - deployment diagram (Kubernetes, regions, CI/CD)
+
+### Our diagrams in the 4+1 view model
+
+The course (exercise 6-uml) describes an architecture with the **4+1 views**. Every view is covered by
+one kind of our diagrams:
+
+| 4+1 view | What it shows | Our diagram |
+| --- | --- | --- |
+| **Scenarios (+1)** | what the users and actors do with the system | use case diagram UC1–UC7 ([`diagrams/usecases/`](diagrams/usecases/10.11_B_use-cases_v1.md)) |
+| **Logical** | the parts of the system and their interfaces | component diagram (to do), ER diagram of the data ([`diagrams/db_schema/`](diagrams/db_schema/)) |
+| **Process** | what runs at the same time and how it talks (Kafka, calls) | one sequence diagram per use case ([`diagrams/sequences/`](diagrams/sequences/)) |
+| **Development** | the code: modules, classes, packages | class diagrams per service ([`diagrams/classes/`](diagrams/classes/README.md)) |
+| **Physical** | where it runs: Kubernetes nodes, regions AT / NO / PL, pods, CI/CD | deployment diagram (to do), manifests in [`k8s/`](k8s/README.md) |
+
+The same diagrams also cover the levels of the **C4 model**: Context = use case diagram,
+Containers = deployment / component diagram, Components = component diagram, Code = class diagrams.
 
 ---
 
 ## Architecture decisions
 
-The 7 decisions that shape our architecture are in [ADR/](ADR/README.md).
+The 9 decisions that shape our architecture are in [ADR/](ADR/README.md).
 
 ---
 
@@ -108,6 +125,7 @@ The 7 decisions that shape our architecture are in [ADR/](ADR/README.md).
 ADR/                 architecture decision records
 diagrams/usecases/   use case diagram (PlantUML)
 diagrams/sequences/  one file per use case: description + sequence diagram (PlantUML)
+diagrams/classes/    one class diagram per service (PlantUML)
 diagrams/db_schema/  database schema (PlantUML)
 db/init/             PostgreSQL tables and users (SQL)
 kafka/               Kafka messages: schemas/ (rules), examples/ (one sample each), messages/ (generated, not committed)
@@ -127,8 +145,8 @@ notebooks/           pipeline_walkthrough.ipynb: one real night through all serv
 
 ✅ done · 🟡 still to do. In the order we build it: design → data → model → services → containers and CI/CD → Kubernetes → monitoring and carbon → demo.
 
-**Status on 22 Nov 2026: 32 done, 29 to do.** Done so far: the design (use cases, ADRs, UML), the data pipeline and
-database, both AI models with the F1 gate, the services device-simulator, apnea-detector and ahi-triage, CI for all
+**Status on 22 Nov 2026: 36 done, 34 to do.** Done so far: the design (use cases, ADRs, UML), the data pipeline and
+database, the accurate model with the F1 gate, the services device-simulator, apnea-detector and ahi-triage, CI for all
 of them, and the Kubernetes manifests of Barbara's services (tested on kind: one real night went through the whole
 flow). Next: the K8s base (Kafka, PostgreSQL), alert-service, carbon-scheduler, dashboard, monitoring and the demo.
 
@@ -137,17 +155,18 @@ flow). Next: the K8s base (Kafka, PostgreSQL), alert-service, carbon-scheduler, 
 | Task | Owner | Status |
 | --- | --- | --- |
 | Use cases, non-functional requirements | both | ✅ |
-| 7 ADRs ([ADR/](ADR/README.md)) | both | ✅ |
+| ADRs 0001–0009 ([ADR/](ADR/README.md)), incl. 0008 (one feature code for training and live) and 0009 (LLM summary with a small local model) | both | ✅ |
+| ADR 0010 (how we measure CO₂), 0011 (open PhysioNet data), 0012 (at-least-once delivery, idempotent consumers), 0013 (model file inside the detector image), 0014 (container registry and CD) | Aliénor | 🟡 |
 | Use case diagram | both | ✅ |
 | Database schema (ER diagram) + [doc/database-tables.md](doc/database-tables.md) | both | ✅ |
-| Sequence diagrams UC2, UC7 | Barbara | ✅ |
-| Sequence diagrams UC1, UC3, UC4 | Aliénor | ✅ |
-| Sequence diagram UC5 | Aliénor | 🟡 |
-| Sequence diagram UC6 | both | 🟡 |
-| Class diagrams of apnea-detector, ahi-triage, model-trainer | Barbara | 🟡 |
-| Common class diagram (`class-common`) | both | 🟡 |
+| Sequence diagrams UC2, UC6, UC7 ([`diagrams/sequences/`](diagrams/sequences/)) | Barbara | ✅ |
+| Sequence diagrams UC1, UC3, UC4 ✅ done, UC5 🟡 to do | Aliénor | 🟡 |
+| Class diagrams of apnea-detector, ahi-triage, model-trainer ([`diagrams/classes/`](diagrams/classes/README.md)) | Barbara | ✅ |
+| Class diagrams of device-simulator, alert-service, carbon-scheduler, doctor-dashboard | Aliénor | 🟡 |
+| Common class diagram (`class-common`) | Barbara | 🟡 |
 | Component diagram with interfaces | both | 🟡 |
 | Deployment diagram (Kubernetes, regions, CI/CD) | Aliénor | 🟡 |
+| C4 / 4+1 views: a table that maps our diagrams to the views of the course (6-uml), see [Diagrams](#diagrams) | both | ✅ |
 
 ### 2. Data, database and Kafka
 
@@ -155,13 +174,16 @@ flow). Next: the K8s base (Kafka, PostgreSQL), alert-service, carbon-scheduler, 
 | --- | --- | --- |
 | Data pipeline `data/01_download.py`, `02_clean.py` ([DATA.md](data/DATA.md)) | Barbara | ✅ |
 | Tables `raw_nights`, `results`, `model_versions` | Barbara | ✅ |
-| Tables `patients`, `alerts`, `decisions`, `carbon_decisions`, DB users, demo patients | Aliénor | ✅ |
+| Tables `patients`, `alerts`, `decisions`, `carbon_decisions`, DB users (`08_create_users.sql`), demo patients (`09_insert_demo_patients.sql`) | Aliénor | ✅ |
 | Kafka topics and JSON schemas ([kafka/](kafka/README.md)) | both | ✅ |
 | Message builders `apnea-events`, `night-results` | Barbara | ✅ |
 | Message builders `raw-signals`, `alerts`, `carbon-signal` | Aliénor | ✅ |
-| Tests of all message builders (`tests/data`) | Aliénor | ✅ |
+| Tests of the message builders `raw-signals`, `alerts`, `carbon-signal` and of the 5 example messages (`tests/data/test_kafka_messages.py`) | Aliénor | ✅ |
+| Tests of the message builders `apnea-events`, `night-results` (`tests/data/test_result_messages.py`) | Barbara | ✅ |
 | `docker-compose.yml` (PostgreSQL, Kafka, topics) | Aliénor | ✅ |
 | Notebook `pipeline_walkthrough.ipynb`: one night through all services | Aliénor | ✅ |
+| Notebooks: move `explore_db.ipynb` to `notebooks/`, update the walkthrough text, do not overwrite `models/` | Aliénor | 🟡 |
+| Data privacy and retention: pseudonyms, what is stored where and for how long (Kafka 7 days, PostgreSQL) | Aliénor | 🟡 |
 
 ### 3. AI model
 
@@ -169,8 +191,7 @@ flow). Next: the K8s base (Kafka, PostgreSQL), alert-service, carbon-scheduler, 
 | --- | --- | --- |
 | Shared per-minute features `services/common/features.py` | Barbara | ✅ |
 | Accurate model (F1 0.906 on held-out Apnea-ECG) | Barbara | ✅ |
-| Fast model as logistic regression in model-trainer (F1 0.882) | Barbara | ✅ |
-| Fast model as a rule (SpO₂ drop ≥ 3 %) in `services/common/fast_model.py` | Aliénor | 🟡 |
+| Fast model as a rule (SpO₂ drop ≥ 3 %) (*fill in `predict()` at the end of `services/common/fast_model.py`, the TODO steps are at the top of the file; the detector and the notebook already call it*) | Aliénor | 🟡 |
 | Model comparison script: F1, run time and gCO₂ of the accurate model, the fast model and the rule | Aliénor | 🟡 |
 
 ### 4. Services
@@ -181,11 +202,11 @@ flow). Next: the K8s base (Kafka, PostgreSQL), alert-service, carbon-scheduler, 
 | `apnea-detector` (UC2, UC5) | Barbara | ✅ |
 | `alert-check` in the detector (UC3) | Barbara | ✅ |
 | `ahi-triage` (UC2) | Barbara | ✅ |
-| LLM summary for the doctor in `ahi-triage` (UC2 step 8) | Barbara | 🟡 |
-| `alert-service` (UC3) | Aliénor | 🟡 |
+| LLM summary for the doctor in `ahi-triage` with local Ollama (UC2 step 8) | Barbara | ✅ |
+| `alert-service` (UC3, grouped alerts: at most 1 per 10 min per patient) | Aliénor | 🟡 |
 | `carbon-scheduler` (UC5, regions AT / NO / PL) | Aliénor | 🟡 |
 | `model-trainer` + F1 gate (UC7) | Barbara | ✅ |
-| `carbon_wait.py`: training waits for `low_carbon` (UC7 step 2, needs carbon-scheduler) | Barbara | 🟡 |
+| `carbon_wait.py`: training waits for `low_carbon` on `carbon-signal` (UC7 step 2, A2) | Barbara | ✅ |
 | `doctor-dashboard` (UC3, UC4, Streamlit) | Aliénor | 🟡 |
 
 ### 5. Containers and CI/CD
@@ -194,10 +215,12 @@ flow). Next: the K8s base (Kafka, PostgreSQL), alert-service, carbon-scheduler, 
 | --- | --- | --- |
 | Dockerfiles of apnea-detector, ahi-triage, model-trainer | Barbara | ✅ |
 | Dockerfile of device-simulator | Aliénor | ✅ |
+| device-simulator Dockerfile builds from git only (generate the demo messages in the image) | Aliénor | 🟡 |
 | Dockerfiles of alert-service, carbon-scheduler, doctor-dashboard | Aliénor | 🟡 |
 | CI: tests of apnea-detector, ahi-triage, model-trainer | Barbara | ✅ |
 | CI: F1 gate in GitHub Actions (`model-trainer.yml`) | Barbara | ✅ |
 | CI: tests of device-simulator | Aliénor | ✅ |
+| CI: run the message builder tests (`tests/data`) | Aliénor | 🟡 |
 | CI: tests of alert-service, carbon-scheduler | Aliénor | 🟡 |
 | CD: build and push images to the registry, deploy | Aliénor | 🟡 |
 
@@ -208,7 +231,7 @@ flow). Next: the K8s base (Kafka, PostgreSQL), alert-service, carbon-scheduler, 
 | Base: Kafka (Strimzi), PostgreSQL, node labels AT / NO / PL | Aliénor | 🟡 |
 | apnea-detector Deployment + HPA (1–3 pods), ahi-triage Deployment ([k8s/](k8s/README.md)) | Barbara | ✅ |
 | model-trainer CronJob (Sunday 02:00) + PVC for the models, DB and LLM Secrets | Barbara | ✅ |
-| Deployments of Aliénor's services | Aliénor | 🟡 |
+| Kafka topics in Kubernetes (KafkaTopic resources), device-simulator as a Job, Deployments of Aliénor's other services | Aliénor | 🟡 |
 | Carbon-aware redeployment and scaling (UC5, ADR 0004) | Aliénor | 🟡 |
 | Local cluster on kind, then GKE | both | 🟡 |
 
@@ -218,8 +241,10 @@ flow). Next: the K8s base (Kafka, PostgreSQL), alert-service, carbon-scheduler, 
 | --- | --- | --- |
 | Prometheus `/metrics` in apnea-detector (8000) and ahi-triage (8001) | Barbara | ✅ |
 | CO₂ per night in apnea-detector (CPU time × power × carbon intensity), CodeCarbon in model-trainer | Barbara | ✅ |
-| CodeCarbon for the LLM call | Barbara | 🟡 |
+| CO₂ of every LLM call (`llm_gco2`, ADR 0009) | Barbara | ✅ |
 | Prometheus + Grafana dashboard "System health" | Aliénor | 🟡 |
+| Prometheus `/metrics` in device-simulator, alert-service, carbon-scheduler (alert latency < 5 s) | Aliénor | 🟡 |
+| Kafka exporter: lag of the nights waiting in Kafka (ADR 0006) | Aliénor | 🟡 |
 | Grafana dashboard "AI & carbon" | Barbara | 🟡 |
 | Carbon-aware model switching: carbon-scheduler decides when the detector uses the fast model, Grafana shows the CO₂ saved against the F1 lost | Aliénor | 🟡 |
 | UC6: drift and low-confidence warnings | both | 🟡 |
@@ -230,6 +255,8 @@ flow). Next: the K8s base (Kafka, PostgreSQL), alert-service, carbon-scheduler, 
 | --- | --- | --- |
 | Whole flow end to end in docker compose | both | 🟡 |
 | Whole flow end to end in Kubernetes | both | 🟡 |
+| Check the non-functional requirements: burst → HPA 1–3 pods, alert < 5 s, one broker down without data loss, deadline 08:00 | both | 🟡 |
+| Known limits of the model for the presentation (AHI from minutes is lower than the clinical AHI, result depends on the carbon mode) | Barbara | 🟡 |
 | Measured CO₂ and sustainability trade-offs for the presentation | both | 🟡 |
 | 5-minute presentation | both | 🟡 |
 
@@ -239,12 +266,12 @@ Both of us work on every criterion. ✅ / 🟡 as in the tables above.
 
 | Criterion (weight) | Barbara | Aliénor |
 | --- | --- | --- |
-| Architecture, ADRs, UML diagrams (25 %) | ADRs and use cases together ✅, sequence diagrams UC2 and UC7 ✅, ER diagram together ✅, class diagrams of her 3 services 🟡, component diagram together 🟡 | ADRs and use cases together ✅, sequence diagrams UC1, UC3, UC4 ✅, ER diagram together ✅, sequence diagram UC5 🟡, deployment diagram 🟡, component diagram together 🟡 |
-| Code (15 %) | `apnea-detector` with alert-check ✅, `ahi-triage` ✅, `model-trainer` + F1 gate ✅, shared `features.py` ✅, LLM summary 🟡, `carbon_wait.py` 🟡 | message builders ✅, `device-simulator` ✅, `alert-service` 🟡, `carbon-scheduler` 🟡, `doctor-dashboard` 🟡 |
-| Data handling (10 %) | data pipeline (download, clean, splits) ✅, tables `raw_nights`, `results`, `model_versions` ✅, topics `apnea-events`, `night-results` ✅ | tables `patients`, `alerts`, `decisions`, `carbon_decisions` and DB users ✅, topics `raw-signals`, `alerts`, `carbon-signal` ✅, `docker-compose.yml` ✅, pipeline walkthrough notebook ✅ |
-| AI model (10 %) | features ✅, accurate model (F1 0.906) ✅, fast model as logistic regression (F1 0.882) ✅, retraining (UC7) ✅, LLM summary 🟡 | fast model as a rule 🟡, model comparison script 🟡 |
-| Carbon footprint (10 %) | CO₂ per night in apnea-detector ✅, CodeCarbon in model-trainer ✅, CodeCarbon for the LLM call 🟡, training only in a low-carbon window 🟡 | carbon-scheduler with regions AT / NO / PL 🟡, carbon-aware model switching 🟡, `carbon_decisions` table ✅ |
+| Architecture, ADRs, UML diagrams (25 %) | ADRs 0001–0009 and use cases together ✅, sequence diagrams UC2, UC6, UC7 ✅, ER diagram together ✅, class diagrams of her 3 services ✅, common class diagram 🟡, component diagram together 🟡, C4 / 4+1 table together ✅ | ADRs 0001–0009 and use cases together ✅, ADR 0010–0014 🟡, sequence diagrams UC1, UC3, UC4 ✅, sequence diagram UC5 🟡, ER diagram together ✅, class diagrams of her services 🟡, deployment diagram 🟡, component diagram together 🟡, C4 / 4+1 table together ✅ |
+| Code (15 %) | `apnea-detector` with alert-check ✅, `ahi-triage` ✅, `model-trainer` + F1 gate ✅, shared `features.py` ✅, LLM summary ✅, `carbon_wait.py` ✅ | message builders ✅, `device-simulator` ✅, `alert-service` 🟡, `carbon-scheduler` 🟡, `doctor-dashboard` 🟡 |
+| Data handling (10 %) | data pipeline (download, clean, splits) ✅, tables `raw_nights`, `results`, `model_versions` ✅, topics `apnea-events`, `night-results` ✅ | tables `patients`, `alerts`, `decisions`, `carbon_decisions` and DB users ✅, topics `raw-signals`, `alerts`, `carbon-signal` ✅, `docker-compose.yml` ✅, pipeline walkthrough notebook ✅, data privacy and retention 🟡 |
+| AI model (10 %) | features ✅, accurate model (F1 0.906) ✅, retraining (UC7) ✅, LLM summary with a local model ✅ | fast model as a rule 🟡, model comparison script 🟡 |
+| Carbon footprint (10 %) | CO₂ per night in apnea-detector ✅, CodeCarbon in model-trainer ✅, CO₂ of every LLM call ✅, training only in a low-carbon window ✅ | carbon-scheduler with regions AT / NO / PL 🟡, carbon-aware model switching 🟡, `carbon_decisions` table ✅ |
 | Deployment, Docker and Kubernetes (10 %) | Dockerfiles of her 3 services ✅, detector Deployment + HPA, triage Deployment, trainer CronJob, Secrets ✅ (tested on kind) | `docker-compose.yml` ✅, Dockerfile of device-simulator ✅, Dockerfiles of her other services 🟡, K8s base (Kafka, PostgreSQL, node labels) 🟡, carbon-aware redeployment 🟡 |
-| Monitoring, Prometheus and Grafana (10 %) | `/metrics` in apnea-detector and ahi-triage ✅, Grafana "AI & carbon" 🟡, UC6 warnings together 🟡 | Prometheus + Grafana "System health" 🟡, Grafana CO₂ saved vs F1 lost 🟡, UC6 warnings together 🟡 |
-| CI/CD (5 %) | CI tests of her 3 services ✅, F1 gate in GitHub Actions ✅ | CI tests of device-simulator ✅, CI tests of her other services 🟡, CD: build, push and deploy 🟡 |
-| Sustainability trade-offs (5 %) | carbon-aware analysis in the detector: accurate, pause or fast before 08:00 (ADR 0003) ✅, accurate vs fast model F1 ✅ | model comparison F1 / run time / gCO₂ 🟡, CO₂ saved vs F1 lost in Grafana 🟡, redeployment to a cleaner region (ADR 0004) 🟡 |
+| Monitoring, Prometheus and Grafana (10 %) | `/metrics` in apnea-detector and ahi-triage ✅, Grafana "AI & carbon" 🟡, UC6 warnings together 🟡 | Prometheus + Grafana "System health" 🟡, `/metrics` in her services 🟡, Kafka exporter 🟡, Grafana CO₂ saved vs F1 lost 🟡, UC6 warnings together 🟡 |
+| CI/CD (5 %) | CI tests of her 3 services ✅, F1 gate in GitHub Actions ✅ | CI tests of device-simulator ✅, CI tests of her other services 🟡, `tests/data` in CI 🟡, CD: build, push and deploy 🟡 |
+| Sustainability trade-offs (5 %) | carbon-aware analysis in the detector: accurate, pause or fast before 08:00 (ADR 0003) ✅, training only in a low-carbon window ✅ | model comparison F1 / run time / gCO₂ 🟡, CO₂ saved vs F1 lost in Grafana 🟡, redeployment to a cleaner region (ADR 0004) 🟡 |
