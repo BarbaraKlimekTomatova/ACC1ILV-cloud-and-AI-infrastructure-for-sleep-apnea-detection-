@@ -59,11 +59,11 @@ The flow of one night: `device-simulator` → **raw-signals** → `apnea-detecto
 | --- | --- | --- | --- | --- |
 | `device-simulator` | UC1 | Simulates the home device: replays the 5 demo nights (SpO₂ and breathing), one `raw-signals` message per minute. A burst mode sends many nights at once (to test scaling). | – (PhysioNet nights, `kafka/messages/`) | Aliénor |
 | `apnea-detector` | UC2, UC5 | Saves the raw night, finds apnea events with the fast or the accurate model (chosen by the carbon mode) and estimates the CO₂ of each night. Pauses while the carbon intensity is high. Scales from 1 to 3 pods. | PostgreSQL: `raw_nights` | Barbara |
-| `alert-check` (part of the detector) | UC3 | Reads the same raw data with its own consumer group that is never paused. If SpO₂ < 80 %, it sends a message to the `alerts` topic. | – | Barbara |
+| `alert-check` | UC3 | Own small service (`services/alert-check/`): reads the same raw data with its own consumer group `alert-check` that is never paused. If SpO₂ < 80 %, it sends a message to the `alerts` topic. (The detector still has its own alert loop too; the alert-service stores a double alert only once.) | – | Aliénor |
 | `ahi-triage` | UC2 | Counts the events of a night, calculates the AHI and severity, saves the result and sends `night-results`. | PostgreSQL: `results` | Barbara |
-| `alert-service` | UC3 | Reads the `alerts` topic and shows the alert to the doctor right away. | PostgreSQL: `alerts` | Aliénor |
+| `alert-service` | UC3 | Reads the `alerts` topic and stores every alert in the `alerts` table right away (the same night and minute only once), so the dashboard can show it to the doctor. Measures the alert latency (< 5 s). | PostgreSQL: `alerts` | Aliénor |
 | `doctor-dashboard` | UC3, UC4 | Patients sorted by severity, SpO₂ chart, AHI trend over several nights and alerts. The doctor approves or corrects each result; every decision is logged. | PostgreSQL: `decisions` (audit log) | Aliénor |
-| `carbon-scheduler` | UC5 | Reads the simulated carbon intensity of three regions (AT / NO / PL) and sends the carbon mode to the `carbon-signal` topic. Lowers the max number of detector pods when carbon is high and moves the detector to the cleanest region. | – | Aliénor |
+| `carbon-scheduler` | UC5 | Simulates the carbon intensity of three regions (AT / NO / PL, daily curve or CSV), picks the cleanest region (only if > 20 % cleaner, at most every 15 min) and sends the carbon mode to the `carbon-signal` topic. Logs every pause / resume / move. Still to do: lower the max number of detector pods when carbon is high and really move the detector pod. | PostgreSQL: `carbon_decisions` | Aliénor |
 | `model-trainer` (Kubernetes Job) | UC7 | Trains a new version of the AI model only in a low-carbon window, measures F1 and CO₂. The new version is used only if F1 is above our threshold. | PostgreSQL: `model_versions` | Barbara |
 
 ### Other components
@@ -145,10 +145,10 @@ notebooks/           pipeline_walkthrough.ipynb: one real night through all serv
 
 ✅ done · 🟡 still to do. In the order we build it: design → data → model → services → containers and CI/CD → Kubernetes → monitoring and carbon → demo.
 
-**Status on 22 Nov 2026: 36 done, 34 to do.** Done so far: the design (use cases, ADRs, UML), the data pipeline and
-database, the accurate model with the F1 gate, the services device-simulator, apnea-detector and ahi-triage, CI for all
-of them, and the Kubernetes manifests of Barbara's services (tested on kind: one real night went through the whole
-flow). Next: the K8s base (Kafka, PostgreSQL), alert-service, carbon-scheduler, dashboard, monitoring and the demo.
+**Status on 24 Nov 2026: 43 done, 33 to do.** Done so far: the design (use cases, ADRs, UML), the data pipeline and
+database, the accurate model with the F1 gate, the services device-simulator, apnea-detector, ahi-triage, alert-check, alert-service and
+carbon-scheduler, the fast model (rule, F1 0.832), CI for the first three, and the Kubernetes manifests of Barbara's services (tested on kind: one real night went through the whole
+flow). Next: CI for the new services, the K8s base (Kafka, PostgreSQL), dashboard, monitoring and the demo.
 
 ### 1. Design
 
@@ -191,7 +191,8 @@ flow). Next: the K8s base (Kafka, PostgreSQL), alert-service, carbon-scheduler, 
 | --- | --- | --- |
 | Shared per-minute features `services/common/features.py` | Barbara | ✅ |
 | Accurate model (F1 0.906 on held-out Apnea-ECG) | Barbara | ✅ |
-| Fast model as a rule (SpO₂ drop ≥ 3 %) (*fill in `predict()` at the end of `services/common/fast_model.py`, the TODO steps are at the top of the file; the detector and the notebook already call it*) | Aliénor | 🟡 |
+| Fast model as a rule (SpO₂ drop ≥ 3 % in this or the previous minute, `services/common/fast_model.py`): F1 0.832 on the held-out nights (gate ≥ 0.80), used by the detector in its fast mode | Aliénor | ✅ |
+| Run `notebooks/pipeline_walkthrough.ipynb` again so parts 4 and 5 show the fast model | Aliénor | 🟡 |
 | Model comparison script: F1, run time and gCO₂ of the accurate model, the fast model and the rule | Aliénor | 🟡 |
 
 ### 4. Services
@@ -201,10 +202,12 @@ flow). Next: the K8s base (Kafka, PostgreSQL), alert-service, carbon-scheduler, 
 | `device-simulator` (UC1, normal / speed / burst modes) | Aliénor | ✅ |
 | `apnea-detector` (UC2, UC5) | Barbara | ✅ |
 | `alert-check` in the detector (UC3) | Barbara | ✅ |
+| `alert-check` as its own service (UC3, consumer group `alert-check`, never paused) | Aliénor | ✅ |
 | `ahi-triage` (UC2) | Barbara | ✅ |
 | LLM summary for the doctor in `ahi-triage` with local Ollama (UC2 step 8) | Barbara | ✅ |
-| `alert-service` (UC3, grouped alerts: at most 1 per 10 min per patient) | Aliénor | 🟡 |
-| `carbon-scheduler` (UC5, regions AT / NO / PL) | Aliénor | 🟡 |
+| `alert-service` (UC3): `alerts` topic → table `alerts`, double alerts skipped, latency in `/metrics` | Aliénor | ✅ |
+| Grouped alerts: at most 1 per 10 min per patient | Aliénor | 🟡 |
+| `carbon-scheduler` (UC5, regions AT / NO / PL, `carbon-signal`, `carbon_decisions`) | Aliénor | ✅ |
 | `model-trainer` + F1 gate (UC7) | Barbara | ✅ |
 | `carbon_wait.py`: training waits for `low_carbon` on `carbon-signal` (UC7 step 2, A2) | Barbara | ✅ |
 | `doctor-dashboard` (UC3, UC4, Streamlit) | Aliénor | 🟡 |
@@ -216,12 +219,13 @@ flow). Next: the K8s base (Kafka, PostgreSQL), alert-service, carbon-scheduler, 
 | Dockerfiles of apnea-detector, ahi-triage, model-trainer | Barbara | ✅ |
 | Dockerfile of device-simulator | Aliénor | ✅ |
 | device-simulator Dockerfile builds from git only (generate the demo messages in the image) | Aliénor | 🟡 |
-| Dockerfiles of alert-service, carbon-scheduler, doctor-dashboard | Aliénor | 🟡 |
+| Dockerfiles of alert-check, alert-service, carbon-scheduler (+ all three in `docker-compose.yml`) | Aliénor | ✅ |
+| Dockerfile of doctor-dashboard | Aliénor | 🟡 |
 | CI: tests of apnea-detector, ahi-triage, model-trainer | Barbara | ✅ |
 | CI: F1 gate in GitHub Actions (`model-trainer.yml`) | Barbara | ✅ |
 | CI: tests of device-simulator | Aliénor | ✅ |
 | CI: run the message builder tests (`tests/data`) | Aliénor | 🟡 |
-| CI: tests of alert-service, carbon-scheduler | Aliénor | 🟡 |
+| CI: tests of alert-check, alert-service, carbon-scheduler (the tests are in `tests/`, the GitHub Actions workflows are missing) | Aliénor | 🟡 |
 | CD: build and push images to the registry, deploy | Aliénor | 🟡 |
 
 ### 6. Kubernetes
@@ -243,10 +247,12 @@ flow). Next: the K8s base (Kafka, PostgreSQL), alert-service, carbon-scheduler, 
 | CO₂ per night in apnea-detector (CPU time × power × carbon intensity), CodeCarbon in model-trainer | Barbara | ✅ |
 | CO₂ of every LLM call (`llm_gco2`, ADR 0009) | Barbara | ✅ |
 | Prometheus + Grafana dashboard "System health" | Aliénor | 🟡 |
-| Prometheus `/metrics` in device-simulator, alert-service, carbon-scheduler (alert latency < 5 s) | Aliénor | 🟡 |
+| Prometheus `/metrics` in alert-check, alert-service (alert latency < 5 s), carbon-scheduler | Aliénor | ✅ |
+| Prometheus `/metrics` in device-simulator | Aliénor | 🟡 |
 | Kafka exporter: lag of the nights waiting in Kafka (ADR 0006) | Aliénor | 🟡 |
 | Grafana dashboard "AI & carbon" | Barbara | 🟡 |
-| Carbon-aware model switching: carbon-scheduler decides when the detector uses the fast model, Grafana shows the CO₂ saved against the F1 lost | Aliénor | 🟡 |
+| Carbon-aware model switching: carbon-scheduler sends the mode, the detector switches to the fast model | Aliénor | ✅ |
+| Grafana shows the CO₂ saved against the F1 lost | Aliénor | 🟡 |
 | UC6: drift and low-confidence warnings | both | 🟡 |
 
 ### 8. Demo and checkpoint 2 (4 Dec 2026)
@@ -267,11 +273,11 @@ Both of us work on every criterion. ✅ / 🟡 as in the tables above.
 | Criterion (weight) | Barbara | Aliénor |
 | --- | --- | --- |
 | Architecture, ADRs, UML diagrams (25 %) | ADRs 0001–0009 and use cases together ✅, sequence diagrams UC2, UC6, UC7 ✅, ER diagram together ✅, class diagrams of her 3 services ✅, common class diagram 🟡, component diagram together 🟡, C4 / 4+1 table together ✅ | ADRs 0001–0009 and use cases together ✅, ADR 0010–0014 🟡, sequence diagrams UC1, UC3, UC4 ✅, sequence diagram UC5 🟡, ER diagram together ✅, class diagrams of her services 🟡, deployment diagram 🟡, component diagram together 🟡, C4 / 4+1 table together ✅ |
-| Code (15 %) | `apnea-detector` with alert-check ✅, `ahi-triage` ✅, `model-trainer` + F1 gate ✅, shared `features.py` ✅, LLM summary ✅, `carbon_wait.py` ✅ | message builders ✅, `device-simulator` ✅, `alert-service` 🟡, `carbon-scheduler` 🟡, `doctor-dashboard` 🟡 |
+| Code (15 %) | `apnea-detector` with alert-check ✅, `ahi-triage` ✅, `model-trainer` + F1 gate ✅, shared `features.py` ✅, LLM summary ✅, `carbon_wait.py` ✅ | message builders ✅, `device-simulator` ✅, `alert-check` ✅, `alert-service` ✅, `carbon-scheduler` ✅, `doctor-dashboard` 🟡 |
 | Data handling (10 %) | data pipeline (download, clean, splits) ✅, tables `raw_nights`, `results`, `model_versions` ✅, topics `apnea-events`, `night-results` ✅ | tables `patients`, `alerts`, `decisions`, `carbon_decisions` and DB users ✅, topics `raw-signals`, `alerts`, `carbon-signal` ✅, `docker-compose.yml` ✅, pipeline walkthrough notebook ✅, data privacy and retention 🟡 |
-| AI model (10 %) | features ✅, accurate model (F1 0.906) ✅, retraining (UC7) ✅, LLM summary with a local model ✅ | fast model as a rule 🟡, model comparison script 🟡 |
-| Carbon footprint (10 %) | CO₂ per night in apnea-detector ✅, CodeCarbon in model-trainer ✅, CO₂ of every LLM call ✅, training only in a low-carbon window ✅ | carbon-scheduler with regions AT / NO / PL 🟡, carbon-aware model switching 🟡, `carbon_decisions` table ✅ |
-| Deployment, Docker and Kubernetes (10 %) | Dockerfiles of her 3 services ✅, detector Deployment + HPA, triage Deployment, trainer CronJob, Secrets ✅ (tested on kind) | `docker-compose.yml` ✅, Dockerfile of device-simulator ✅, Dockerfiles of her other services 🟡, K8s base (Kafka, PostgreSQL, node labels) 🟡, carbon-aware redeployment 🟡 |
-| Monitoring, Prometheus and Grafana (10 %) | `/metrics` in apnea-detector and ahi-triage ✅, Grafana "AI & carbon" 🟡, UC6 warnings together 🟡 | Prometheus + Grafana "System health" 🟡, `/metrics` in her services 🟡, Kafka exporter 🟡, Grafana CO₂ saved vs F1 lost 🟡, UC6 warnings together 🟡 |
+| AI model (10 %) | features ✅, accurate model (F1 0.906) ✅, retraining (UC7) ✅, LLM summary with a local model ✅ | fast model as a rule (F1 0.832) ✅, model comparison script 🟡 |
+| Carbon footprint (10 %) | CO₂ per night in apnea-detector ✅, CodeCarbon in model-trainer ✅, CO₂ of every LLM call ✅, training only in a low-carbon window ✅ | carbon-scheduler with regions AT / NO / PL ✅, carbon-aware model switching ✅, `carbon_decisions` table ✅ |
+| Deployment, Docker and Kubernetes (10 %) | Dockerfiles of her 3 services ✅, detector Deployment + HPA, triage Deployment, trainer CronJob, Secrets ✅ (tested on kind) | `docker-compose.yml` ✅, Dockerfile of device-simulator ✅, Dockerfiles of alert-check, alert-service, carbon-scheduler ✅, Dockerfile of doctor-dashboard 🟡, K8s base (Kafka, PostgreSQL, node labels) 🟡, carbon-aware redeployment 🟡 |
+| Monitoring, Prometheus and Grafana (10 %) | `/metrics` in apnea-detector and ahi-triage ✅, Grafana "AI & carbon" 🟡, UC6 warnings together 🟡 | Prometheus + Grafana "System health" 🟡, `/metrics` in alert-check, alert-service, carbon-scheduler ✅, in device-simulator 🟡, Kafka exporter 🟡, Grafana CO₂ saved vs F1 lost 🟡, UC6 warnings together 🟡 |
 | CI/CD (5 %) | CI tests of her 3 services ✅, F1 gate in GitHub Actions ✅ | CI tests of device-simulator ✅, CI tests of her other services 🟡, `tests/data` in CI 🟡, CD: build, push and deploy 🟡 |
 | Sustainability trade-offs (5 %) | carbon-aware analysis in the detector: accurate, pause or fast before 08:00 (ADR 0003) ✅, training only in a low-carbon window ✅ | model comparison F1 / run time / gCO₂ 🟡, CO₂ saved vs F1 lost in Grafana 🟡, redeployment to a cleaner region (ADR 0004) 🟡 |

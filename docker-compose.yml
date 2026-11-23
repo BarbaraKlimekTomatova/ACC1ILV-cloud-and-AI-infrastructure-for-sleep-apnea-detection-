@@ -1,6 +1,8 @@
-# Local infrastructure for development: PostgreSQL + Kafka (+ topic creation)
+# Local development: PostgreSQL + Kafka (+ topic creation), carbon-scheduler, alert-check, alert-service
+# (always on), apnea-detector, ahi-triage, device-simulator (profiles: detector, triage, sim)
 #
-#   start:            docker compose up          (add -d to run in the background)
+#   start:            docker compose up --build  (add -d to run in the background)
+#   everything:       docker compose --profile detector --profile triage --profile sim up --build
 #   stop:             docker compose down
 #   start from zero:  docker compose down -v     (deletes the database; db/init/ runs again on next start)
 #
@@ -119,6 +121,79 @@ services:
       # demo: same clock as the detector (deadline_met = finished before 08:00)
       DEMO_TIME: ""
     ports: ["8001:8001"]                                 # Prometheus /metrics
+
+  # ---------------------------------------------------------------- carbon-scheduler (UC5)
+  # simulated carbon intensity of AT / NO / PL -> carbon-signal, decisions -> carbon_decisions.
+  # Demo settings: SPEED 60 = one simulated minute per second. With NO in REGIONS the mode is
+  # always low_carbon; for high_carbon use REGIONS: "AT,PL" (AT is dirty at night) or FORCE_MODE.
+  carbon-scheduler:
+    build:
+      context: .
+      dockerfile: services/carbon-scheduler/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    environment:
+      KAFKA_BOOTSTRAP: kafka:29092
+      DATABASE_URL: postgresql://carbon_scheduler:dev_carbon_scheduler@postgres:5432/sleep_apnea
+      REGIONS: "AT,NO,PL"
+      HIGH_CARBON_THRESHOLD: "300"                       # gCO2/kWh
+      FORCE_MODE: ""                                     # low_carbon / high_carbon / empty
+      CARBON_CSV: ""                                     # e.g. services/carbon-scheduler/carbon_example.csv
+      SPEED: "1"                                         # simulated seconds per real second
+      START_TIME: ""                                     # HH:MM, empty = now
+      STEP_S: "5"
+    ports: ["8004:8004"]                                 # Prometheus /metrics
+
+  # ---------------------------------------------------------------- alert-check (UC3)
+  # raw-signals (own group "alert-check", never paused) -> alerts when SpO2 < 80 %
+  alert-check:
+    build:
+      context: .
+      dockerfile: services/alert-check/Dockerfile
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+    environment:
+      KAFKA_BOOTSTRAP: kafka:29092
+      ALERT_THRESHOLD: "80"
+    ports: ["8002:8002"]                                 # Prometheus /metrics
+
+  # ---------------------------------------------------------------- alert-service (UC3)
+  # alerts -> table alerts (DB user alert_service). alerts.night_id needs the raw_nights row,
+  # which the apnea-detector writes: run it too (--profile detector), else alerts are dropped
+  # after FK_WAIT_S seconds (logged as ERROR, alert_service_dropped_total).
+  alert-service:
+    build:
+      context: .
+      dockerfile: services/alert-service/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    environment:
+      KAFKA_BOOTSTRAP: kafka:29092
+      DATABASE_URL: postgresql://alert_service:dev_alert_service@postgres:5432/sleep_apnea
+      FK_WAIT_S: "60"
+    ports: ["8003:8003"]                                 # Prometheus /metrics
+
+  # ---------------------------------------------------------------- device-simulator (optional)
+  # needs kafka/messages/raw-signals/*.jsonl first (python data/03_to_kafka_messages.py --split demo).
+  #   docker compose --profile sim up --build device-simulator
+  device-simulator:
+    profiles: ["sim"]
+    build:
+      context: .
+      dockerfile: services/device-simulator/Dockerfile
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+    environment:
+      KAFKA_BOOTSTRAP: kafka:29092
+      SPEED: "60"
 
 volumes:
   pgdata:
