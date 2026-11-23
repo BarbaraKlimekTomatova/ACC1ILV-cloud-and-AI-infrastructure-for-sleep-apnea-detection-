@@ -1,0 +1,5 @@
+# alert-check: same pins as the root requirements.txt (Python 3.12, the Docker image and CI use 3.12)
+#   pip install -r services/alert-check/requirements.txt pytest==8.3.4
+confluent-kafka==2.16.1
+jsonschema==4.26.0
+prometheus-client==0.26.0

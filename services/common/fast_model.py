@@ -1,52 +1,55 @@
 # Fast model for high_carbon (UC2, UC5, ADR 0003). Owner: Aliénor.
 #
-# SKELETON – only the plan and the empty predict() at the end, no logic yet.
-#
 # Why
 #   In high_carbon, close to the 08:00 deadline, the apnea-detector must still finish the night,
 #   but with as little energy as possible. The accurate model (gradient boosting, model-trainer)
 #   is too expensive then. The fast model is a simple RULE: no training, no scikit-learn,
-#   a few comparisons per minute.
+#   two comparisons per minute.
 #
-# TODO
-#   1. Input: the features of one minute, the dict that NightFeatures.add_minute() in
-#      services/common/features.py returns (42 values, e.g. the SpO2 drop below the baseline,
-#      the flow amplitude ratio, the seconds below 70 % / 10 % of normal breathing, and the
-#      same values of the previous minute as prev_*).
-#   2. Rule: an event when SpO2 drops by >= 3 % below the baseline (the AASM hypopnea rule),
-#      in this minute or the previous one (SpO2 falls 20-40 s after the breathing stops).
-#      Optional: also an event when the airflow is almost flat (apnea) even without a drop.
-#   3. Output, the same as the detector expects from every model:
-#      event "apnea_or_hypopnea" or "normal", plus a probability between 0 and 1
-#      (e.g. how far the drop is above the 3 % limit). The fast model cannot tell apnea from
-#      hypopnea; ahi-triage already handles that (apnea_count / hypopnea_count = null).
-#   4. Tests in tests/common/test_fast_model.py: a minute with a 4 % drop -> event,
-#      1 % -> normal, missing SpO2 (NaN) -> normal, the drop only in prev_* -> event.
-#   5. F1 on the held-out Apnea-ECG nights (split = test in data/clean/splits.json), the same
-#      way as evaluate() in services/model-trainer/train.py, so it can be compared with the
-#      accurate model (F1 0.906). It should pass the F1 gate (>= 0.80).
-#   6. Model comparison (separate task, same owner): F1, run time per night and gCO2 of the accurate model
-#      and of this rule, plus the AHI of the 5 demo nights. This is the sustainability
-#      trade-off for the presentation (ADR 0003, 0010).
-#   7. Nothing to wire: the detector and the notebook already call predict(). As soon as it
-#      returns a result instead of NotImplementedError, the detector uses it in its FAST mode.
-#   8. Run notebooks/pipeline_walkthrough.ipynb again: parts 4 and 5 then show the rule
-#      (F1, confusion matrix, the high_carbon scenario) instead of "not ready yet".
-#   9. README: switch "Fast model as a rule" and "Model comparison script" to done.
+# Rule (AASM hypopnea rule, simplified)
+#   event when SpO2 drops by >= 3 % below the patient's own baseline in THIS minute or in the
+#   PREVIOUS one (SpO2 falls 20-40 s after the breathing stops, so the drop often comes late).
+#   The baseline and the drop come from services/common/features.py (spo2_drop, prev_spo2_drop).
+#   The rule cannot tell apnea from hypopnea; ahi-triage already handles that
+#   (apnea_count / hypopnea_count = null).
 #
-# Already wired in (do not rename):
-#   * the apnea-detector calls predict() in its FAST mode (detector.py, load_fast_model()).
-#     While predict() raises NotImplementedError, the detector uses the accurate model instead.
-#   * notebooks/pipeline_walkthrough.ipynb uses predict() in part 4 and 5 the same way.
+# Quality on the held-out Apnea-ECG nights (split = test, 3875 minutes, same as train.py evaluate()):
+#   F1 0.832   precision 0.714   recall 0.996      (accurate model: F1 0.906; F1 gate: >= 0.80)
+#   An extra "flat airflow" condition (flow_s_below_10 >= 10 s) did not change the F1, so it is not used.
+#
+# Used by (do not rename):
+#   * the apnea-detector in its FAST mode (detector.py, load_fast_model() / RuleModel)
+#   * notebooks/pipeline_walkthrough.ipynb, part 4 and 5
+#   Tests: tests/common/test_fast_model.py
+
+import math
 
 VERSION = "rule-v1"          # goes into apnea-events.model_version and results.model_version
+DROP_LIMIT = 3.0             # % below the SpO2 baseline
+FULL_CONFIDENCE_AT = 3.0     # confidence reaches 1.0 this far (in %) away from the limit
+
+EVENT, NORMAL = "apnea_or_hypopnea", "normal"
 
 
-def predict(features):
-    """Features of one minute (the dict from NightFeatures.add_minute) -> (event, probability).
+def _drop(minute, key):
+    """SpO2 drop in %, 0 if it is missing or NaN (no SpO2 = no evidence of an event)."""
+    v = minute.get(key)
+    try:
+        v = float(v)
+    except (TypeError, ValueError):
+        return 0.0
+    return 0.0 if math.isnan(v) else max(0.0, v)
+
+
+def predict(minute):
+    """Features of one minute (the dict from NightFeatures.add_minute) -> (event, confidence).
 
     event:       "apnea_or_hypopnea" or "normal"
-    probability: a number between 0 and 1
+    confidence:  0.5 .. 1.0, how sure the rule is about THAT event: 0.5 right at the 3 % limit,
+                 1.0 when the drop is 3 % or more away from it (0 % drop -> normal 1.0,
+                 6 % drop -> event 1.0). Same meaning as "probability" in apnea-events.
     """
-    # TODO steps 1-3 above
-    raise NotImplementedError("fast_model.py is still a skeleton (owner: Aliénor)")
+    drop = max(_drop(minute, "spo2_drop"), _drop(minute, "prev_spo2_drop"))
+    distance = min(1.0, abs(drop - DROP_LIMIT) / FULL_CONFIDENCE_AT)
+    confidence = round(0.5 + 0.5 * distance, 3)
+    return (EVENT if drop >= DROP_LIMIT else NORMAL), confidence
