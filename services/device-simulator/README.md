@@ -36,6 +36,22 @@ docker compose up -d                                   # Kafka + the 5 topics
 python services/device-simulator/main.py --speed 600
 ```
 
+## Docker and Kubernetes
+
+The image needs nothing generated first: its build makes the messages from `data/clean/`
+(stage 1 runs `data/03_to_kafka_messages.py`), so it builds from a clean git checkout.
+`--build-arg SPLIT=all` puts all 33 nights in the image (default `demo`).
+
+```
+docker build -f services/device-simulator/Dockerfile -t device-simulator:dev .
+kind load docker-image device-simulator:dev --name apnea
+kubectl apply -f k8s/jobs/device-simulator.yaml       # Kafka address from the ConfigMap apnea-config
+```
+
+The Job waits for Kafka, sends the nights once and ends (`backoffLimit: 0`, so a failure never
+sends a night twice). Send again: `kubectl delete job device-simulator`, then apply again.
+Settings (`SPEED`, `BURST`, `COPIES`, `NIGHTS`) are in the Job's `env`.
+
 ## Settings
 
 Command line first; each option also has an environment variable (for Docker / Kubernetes).

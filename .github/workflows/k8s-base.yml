@@ -1,0 +1,70 @@
+# K8s base CI: the manifests fit together (fast), then the whole base on kind:
+# Strimzi Kafka + 5 topics, PostgreSQL with db/init/, region labels, device-simulator Job.
+name: k8s-base
+
+on:
+  push:
+    paths:
+      - "k8s/**"
+      - "db/init/**"
+      - "services/device-simulator/**"
+      - "tests/k8s/**"
+      - ".github/workflows/k8s-base.yml"
+  pull_request:
+    paths:
+      - "k8s/**"
+      - "db/init/**"
+      - "services/device-simulator/**"
+      - "tests/k8s/**"
+  workflow_dispatch:
+
+jobs:
+  manifests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pytest==8.3.4 pyyaml==6.0.2
+      - run: pytest tests/k8s
+
+  kind:
+    needs: manifests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: helm/kind-action@v1
+        with:
+          config: k8s/kind/cluster.yaml
+          cluster_name: apnea
+      - name: K8s base
+        run: bash k8s/base/install.sh
+      - name: Region labels
+        run: test "$(kubectl get nodes -l 'region in (AT,NO,PL)' -o name | wc -l)" -eq 3
+      - name: Database tables and demo patients from db/init/
+        run: |
+          kubectl exec postgres-0 -- psql -U postgres -d sleep_apnea -tAc "select count(*) from patients" | grep -qx 5
+      - name: device-simulator image and Job (burst)
+        run: |
+          docker build -f services/device-simulator/Dockerfile -t device-simulator:dev .
+          kind load docker-image device-simulator:dev --name apnea
+          kubectl apply -f k8s/apnea-config.yaml
+          sed 's/value: "0"/value: "1"/' k8s/jobs/device-simulator.yaml | kubectl apply -f -   # BURST=1
+          kubectl wait job/device-simulator --for=condition=complete --timeout=5m
+          kubectl logs job/device-simulator | tail -n 3
+      - name: 2018 messages in raw-signals (5 demo nights)
+        run: |
+          pod=$(kubectl get pod -l strimzi.io/cluster=apnea,strimzi.io/kind=Kafka -o name | head -n 1)
+          n=$(kubectl exec "$pod" -- bin/kafka-get-offsets.sh --bootstrap-server localhost:9092 --topic raw-signals \
+              | awk -F: '{s += $3} END {print s}')
+          echo "raw-signals: $n messages"
+          test "$n" -eq 2018
+      - name: Debug on failure
+        if: failure()
+        run: |
+          kubectl get all,kafka,kafkatopic -o wide
+          kubectl describe pods | tail -n 100
+          kubectl logs deployment/strimzi-cluster-operator --tail=100 || true
+          kubectl logs job/device-simulator --all-containers || true

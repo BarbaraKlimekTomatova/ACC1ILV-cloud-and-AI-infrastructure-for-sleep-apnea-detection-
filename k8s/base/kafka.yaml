@@ -1,0 +1,58 @@
+# Kafka for the cluster (Strimzi operator, KRaft, 1 node that is broker + controller).
+# Needs the Strimzi operator first (k8s/base/install.sh installs it). Strimzi API v1
+# (Strimzi 0.49 and newer; 1.x only knows v1).
+#
+# Address for the services: apnea-kafka-bootstrap:9092 (= KAFKA_BOOTSTRAP in k8s/apnea-config.yaml).
+# Strimzi makes the Service "<cluster name>-kafka-bootstrap", the cluster name is "apnea".
+#
+# 1 node = 1 copy of every topic. Enough for kind and the demo; on GKE use 3 nodes and
+# replication factor 3 (doc/gcp-architecture.md).
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaNodePool
+metadata:
+  name: dual-role
+  labels:
+    strimzi.io/cluster: apnea
+spec:
+  replicas: 1
+  roles: [controller, broker]
+  storage:
+    type: jbod
+    volumes:
+      - id: 0
+        type: persistent-claim
+        size: 2Gi
+        deleteClaim: true          # kind only: the data goes away with the cluster
+        kraftMetadata: shared
+  resources:
+    requests: {cpu: 200m, memory: 768Mi}
+    limits: {cpu: "1", memory: 1Gi}
+  jvmOptions:
+    -Xms: 256m
+    -Xmx: 512m
+---
+apiVersion: kafka.strimzi.io/v1
+kind: Kafka
+metadata:
+  name: apnea
+  annotations:                     # needed by Strimzi 0.49/0.50, ignored by newer versions
+    strimzi.io/node-pools: enabled
+    strimzi.io/kraft: enabled
+spec:
+  kafka:
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+    config:
+      # one broker, so every internal topic has 1 copy (same as docker-compose.yml)
+      offsets.topic.replication.factor: 1
+      transaction.state.log.replication.factor: 1
+      transaction.state.log.min.isr: 1
+      default.replication.factor: 1
+      min.insync.replicas: 1
+      group.initial.rebalance.delay.ms: 0
+      auto.create.topics.enable: false   # only our 5 topics (k8s/base/kafka-topics.yaml)
+  entityOperator:
+    topicOperator: {}              # turns the KafkaTopic resources into real topics

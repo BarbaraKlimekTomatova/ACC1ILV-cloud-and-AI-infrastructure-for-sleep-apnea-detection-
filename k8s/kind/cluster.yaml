@@ -1,0 +1,19 @@
+# kind cluster for the project: 1 control plane + 3 workers, one per simulated region.
+# The carbon-scheduler moves the apnea-detector to the node of the cleanest region (ADR 0004),
+# so every region needs its own node with the label region = AT / NO / PL.
+#
+#   kind create cluster --config k8s/kind/cluster.yaml
+#
+# Already have a cluster without these labels? k8s/base/install.sh labels the nodes for you.
+# Delete it when you do not need it (saves energy): kind delete cluster --name apnea
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: apnea
+nodes:
+  - role: control-plane
+  - role: worker
+    labels: {region: AT}
+  - role: worker
+    labels: {region: "NO"}      # quoted: a bare NO is "false" in YAML 1.1
+  - role: worker
+    labels: {region: PL}

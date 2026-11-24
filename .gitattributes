@@ -1,2 +1,4 @@
 # GitHub language statistics: notebooks are docs (their saved charts are big), not code
 *.ipynb linguist-documentation
+# shell scripts must keep LF, also on a Windows checkout (bash fails on CRLF)
+*.sh text eol=lf

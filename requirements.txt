@@ -40,6 +40,7 @@ jinja2==3.1.6                # HTML pages for the doctor-dashboard
 
 # --- Tests (CI with GitHub Actions) ------------------------------
 pytest==8.3.4
+pyyaml==6.0.2                # tests/k8s read the Kubernetes manifests
 httpx==0.28.1
 
 # --- Data download (data/01_download.py) --------------------------------------
