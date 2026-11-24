@@ -181,7 +181,7 @@ services:
     ports: ["8003:8003"]                                 # Prometheus /metrics
 
   # ---------------------------------------------------------------- device-simulator (optional)
-  # needs kafka/messages/raw-signals/*.jsonl first (python data/03_to_kafka_messages.py --split demo).
+  # the image makes the demo nights from data/clean/ itself (services/device-simulator/Dockerfile).
   #   docker compose --profile sim up --build device-simulator
   device-simulator:
     profiles: ["sim"]

@@ -1,0 +1,62 @@
+# device-simulator as a Job (UC1). Owner: Aliénor.
+# Sends the 5 demo nights to raw-signals once, then ends. The nights are inside the image
+# (made from data/clean/ while the image is built, see services/device-simulator/Dockerfile).
+#
+# Not in k8s/ itself, so "kubectl apply -f k8s/" does not send nights by accident.
+#   docker build -f services/device-simulator/Dockerfile -t device-simulator:dev .
+#   kind load docker-image device-simulator:dev --name apnea
+#   kubectl apply -f k8s/jobs/device-simulator.yaml
+#   kubectl logs -f job/device-simulator
+# Send again (a Job runs only once):
+#   kubectl delete job device-simulator --ignore-not-found && kubectl apply -f k8s/jobs/device-simulator.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: device-simulator
+  labels: {app: device-simulator}
+spec:
+  backoffLimit: 0                  # no retry: a second try would send the same nights twice
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels: {app: device-simulator}
+    spec:
+      restartPolicy: Never
+      initContainers:
+        # wait until the Kafka bootstrap Service answers (the base may still be starting)
+        - name: wait-for-kafka
+          image: device-simulator:dev
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef: {name: apnea-config}
+          command:
+            - python
+            - -c
+            - |
+              import os, socket, time
+              host, port = os.environ["KAFKA_BOOTSTRAP"].rsplit(":", 1)
+              while True:
+                  try:
+                      socket.create_connection((host, int(port)), timeout=3).close()
+                      print("kafka is up:", host, port); break
+                  except OSError as e:
+                      print("waiting for kafka:", host, port, e); time.sleep(3)
+      containers:
+        - name: device-simulator
+          image: device-simulator:dev
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef: {name: apnea-config}     # KAFKA_BOOTSTRAP
+          env:
+            # settings: services/device-simulator/README.md
+            - name: SPEED                # 60 = one night-minute per second (~7 min a night)
+              value: "60"
+            - name: BURST                # "1" = everything at once (test the HPA, ADR 0001)
+              value: "0"
+            - name: COPIES               # each night N times with a new night_id
+              value: "1"
+            - name: NIGHTS               # empty = the 5 demo nights (P01-P05)
+              value: ""
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+            limits: {cpu: 500m, memory: 256Mi}

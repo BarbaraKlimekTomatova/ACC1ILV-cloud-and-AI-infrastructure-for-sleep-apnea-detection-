@@ -7,12 +7,16 @@ on:
       - "services/device-simulator/**"
       - "tests/device-simulator/**"
       - "kafka/schemas/**"
+      - "data/03_to_kafka_messages.py"
+      - "data/clean/**"
       - ".github/workflows/device-simulator.yml"
   pull_request:
     paths:
       - "services/device-simulator/**"
       - "tests/device-simulator/**"
       - "kafka/schemas/**"
+      - "data/03_to_kafka_messages.py"
+      - "data/clean/**"
   workflow_dispatch:
 
 jobs:
@@ -28,3 +32,15 @@ jobs:
       # the .jsonl files are not in git, so the test on a real night is skipped here
       - name: Tests
         run: pytest tests/device-simulator
+
+  # the image must build from git only: the nights are made inside the build (no kafka/messages/)
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -f services/device-simulator/Dockerfile -t device-simulator:ci .
+      - name: The 5 demo nights are in the image
+        run: |
+          docker run --rm --entrypoint sh device-simulator:ci -c 'ls kafka/messages/raw-signals/*.jsonl | wc -l' | grep -qx 5
+          docker run --rm device-simulator:ci --dry-run --burst | tail -n 3

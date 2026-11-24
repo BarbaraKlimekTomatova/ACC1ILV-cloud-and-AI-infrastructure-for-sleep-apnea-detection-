@@ -1,12 +1,13 @@
 # Settings shared by apnea-detector, ahi-triage and model-trainer (owner: Barbara).
-# Kafka and PostgreSQL come from the K8s base (Aliénor): change KAFKA_BOOTSTRAP and the
-# host "postgres" if their Service names are different.
+# Kafka and PostgreSQL come from the K8s base (k8s/base/, Aliénor): Strimzi Kafka cluster "apnea"
+# -> Service apnea-kafka-bootstrap:9092, PostgreSQL -> Service postgres:5432.
+# (docker-compose.yml uses kafka:29092; the services read the address from KAFKA_BOOTSTRAP.)
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: apnea-config
 data:
-  KAFKA_BOOTSTRAP: "kafka:29092"
+  KAFKA_BOOTSTRAP: "apnea-kafka-bootstrap:9092"
   DEADLINE: "08:00"
   TZ_DEADLINE: "Europe/Vienna"
   DEMO_TIME: ""                  # demo clock, e.g. "23:00" (pause) or "06:30" (fast model)

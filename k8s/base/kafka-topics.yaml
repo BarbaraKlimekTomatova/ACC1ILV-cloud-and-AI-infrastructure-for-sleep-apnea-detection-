@@ -1,0 +1,50 @@
+# The 5 topics of the system (same as kafka-init in docker-compose.yml, message shapes in
+# kafka/schemas/). The Strimzi Topic Operator creates them in the Kafka cluster "apnea".
+# Check: kubectl get kafkatopic   (READY = True)
+#
+# Order = the way one night flows through the system (data/03_to_kafka_messages.py).
+# replicas: 1 because the cluster has 1 broker (k8s/base/kafka.yaml).
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: raw-signals                # device-simulator -> apnea-detector, alert-check
+  labels: {strimzi.io/cluster: apnea}
+spec:
+  partitions: 3                    # up to 3 apnea-detector pods share the work (HPA 1-3, ADR 0001)
+  replicas: 1
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: alerts                     # alert-check -> alert-service
+  labels: {strimzi.io/cluster: apnea}
+spec:
+  partitions: 1
+  replicas: 1
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: apnea-events               # apnea-detector -> ahi-triage
+  labels: {strimzi.io/cluster: apnea}
+spec:
+  partitions: 1
+  replicas: 1
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: night-results              # ahi-triage -> doctor-dashboard
+  labels: {strimzi.io/cluster: apnea}
+spec:
+  partitions: 1
+  replicas: 1
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: carbon-signal              # carbon-scheduler -> apnea-detector, model-trainer
+  labels: {strimzi.io/cluster: apnea}
+spec:
+  partitions: 1
+  replicas: 1

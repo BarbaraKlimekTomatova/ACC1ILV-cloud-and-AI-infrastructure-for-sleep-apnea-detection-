@@ -1,0 +1,82 @@
+# PostgreSQL 16 for the cluster (same image and database as docker-compose.yml).
+# Address for the services: postgres:5432, database sleep_apnea (Secret apnea-db in
+# k8s/apnea-config.yaml).
+#
+# The tables, the 7 DB users and the demo patients come from db/init/*.sql. They are put in
+# the ConfigMap "db-init" (made from the folder, so there is no second copy in git):
+#   kubectl create configmap db-init --from-file=db/init/ --dry-run=client -o yaml | kubectl apply -f -
+# k8s/base/install.sh does this. Like in Docker, the SQL runs only on the FIRST start (empty
+# volume). Start from zero: kubectl delete statefulset postgres && kubectl delete pvc data-postgres-0
+---
+# Admin password. Local development only; on GKE create this Secret by hand and do not commit it.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-admin
+type: Opaque
+stringData:
+  password: postgres
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  labels: {app: postgres}
+spec:
+  selector: {app: postgres}
+  ports:
+    - {name: postgres, port: 5432, targetPort: postgres}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  labels: {app: postgres}
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels: {app: postgres}
+  template:
+    metadata:
+      labels: {app: postgres}
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16
+          env:
+            - {name: POSTGRES_DB, value: sleep_apnea}
+            - {name: POSTGRES_USER, value: postgres}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef: {name: postgres-admin, key: password}
+            - name: PGDATA                 # a sub folder: the volume root may hold lost+found
+              value: /var/lib/postgresql/data/pgdata
+          ports:
+            - {name: postgres, containerPort: 5432}
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres", "-d", "sleep_apnea"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres", "-d", "sleep_apnea"]
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {cpu: 500m, memory: 512Mi}
+          volumeMounts:
+            - {name: data, mountPath: /var/lib/postgresql/data}
+            - {name: db-init, mountPath: /docker-entrypoint-initdb.d, readOnly: true}
+      volumes:
+        - name: db-init
+          configMap: {name: db-init}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests: {storage: 1Gi}
