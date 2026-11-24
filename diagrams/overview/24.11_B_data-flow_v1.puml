@@ -1,0 +1,105 @@
+@startuml
+skinparam dpi 200
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam linetype ortho
+skinparam nodesep 50
+skinparam ranksep 70
+skinparam ArrowColor #444444
+skinparam component {
+  BorderColor #444444
+  BackgroundColor #FFFFFF
+  StereotypeFontSize 11
+}
+skinparam queue {
+  BorderColor #444444
+  BackgroundColor #FEF3C7
+}
+skinparam database {
+  BorderColor #444444
+  BackgroundColor #F3F4F6
+}
+title Architecture overview – data flow of one night
+
+legend bottom left
+  |= Colour |= Meaning |
+  |<#DBEAFE> | service of Barbara |
+  |<#EDE9FE> | service of Aliénor |
+  |<#FEF3C7> | Kafka topic (JSON Schema in kafka/schemas/) |
+  |<#F3F4F6> | table in the one PostgreSQL database; only its owner writes it, all read it (ADR 0007) |
+  Solid arrow to / from a topic = Kafka message, to a table = SQL, to a lollipop = HTTP call.
+  Dashed arrow = uses a file. Every service offers /metrics (8000–8004) for Prometheus.
+  apnea-detector and model-trainer share services/common (see class-common diagram).
+endlegend
+
+' ---------------- row 1: carbon and model lifecycle (UC5, UC7)
+actor "Carbon intensity\nsource" as CIS
+component "carbon-scheduler" as SCH #EDE9FE
+queue "carbon-signal" as CS
+component "model-trainer\n(CronJob, F1 gate)" as TRN #DBEAFE
+artifact "models/\nmodel.joblib" as MODEL
+
+' ---------------- row 2: screening of a night (UC1, UC2)
+component "device-simulator" as SIM #EDE9FE
+queue "raw-signals" as RAW
+component "apnea-detector\n(1–3 pods, HPA)" as DET #DBEAFE
+queue "apnea-events" as EVT
+component "ahi-triage" as TRI #DBEAFE
+queue "night-results" as RES
+component "doctor-dashboard\n(Streamlit)" as DASH #EDE9FE
+
+' ---------------- row 3: alert path, never paused (UC3, ADR 0002)
+component "alert-check" as ACK #EDE9FE
+queue "alerts" as ALT
+component "alert-service" as ASV #EDE9FE
+() "/api/generate" as IGEN
+component "Ollama\n(local LLM)" as LLM
+
+' ---------------- row 4: tables
+database "carbon_decisions" as T_CD
+database "raw_nights" as T_RAW
+database "model_versions" as T_MV
+database "alerts" as T_ALT
+database "results" as T_RES
+database "decisions" as T_DEC
+
+' ---------------- monitoring (UC6)
+component "Prometheus" as PROM
+component "Grafana" as GRAF
+
+' row 1
+CIS -right-> SCH
+SCH -right->> CS
+CS -right->> TRN
+TRN .right.> MODEL : writes
+
+' row 2
+SIM -right->> RAW
+RAW -right->> DET
+DET -right->> EVT
+EVT -right->> TRI
+TRI -right->> RES
+RES -right->> DASH
+
+' between the rows
+CS -down->> DET : mode
+MODEL <.. DET : loads
+TRI -down-> IGEN : summary
+IGEN -right- LLM
+RAW -down->> ACK
+DET -down->> ALT
+ACK -right->> ALT
+ALT -right->> ASV
+ASV -[hidden]right- T_RAW
+
+' writes to the own table
+SCH -down-> T_CD
+DET -down-> T_RAW
+TRN -down-> T_MV
+ASV -down-> T_ALT
+TRI -down-> T_RES
+DASH -down-> T_DEC
+
+GRAF -right-> PROM
+@enduml

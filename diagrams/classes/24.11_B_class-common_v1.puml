@@ -1,0 +1,89 @@
+@startuml
+skinparam dpi 200
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam linetype ortho
+skinparam nodesep 70
+skinparam ranksep 80
+skinparam classAttributeIconSize 0
+skinparam ArrowColor #444444
+skinparam class {
+  BorderColor #444444
+  BackgroundColor #DBEAFE
+  StereotypeFontSize 11
+}
+skinparam package {
+  BorderColor #999999
+  FontStyle bold
+}
+hide circle
+hide empty members
+set separator none
+title services/common – class diagram (shared by training and live, ADR 0008)
+
+package "services/common/features.py" {
+  class features <<module>> {
+    + {field} SPO2_HZ = 1, BREATH_HZ = 4
+    + {field} WINDOW_S = 10
+    + {field} BASELINE_MINUTES = 5
+    + {field} SPO2_BASELINE_PCT = 90
+    + {field} APNEA_RATIO = 0.1, HYPOPNEA_RATIO = 0.7
+    + {field} CURRENT : list[str]  (21 features)
+    + {field} FEATURES : list[str]  (CURRENT + prev_*, 42)
+    + to_vector(row) : ndarray
+    + night_features(signals) : ndarray
+    - _amplitudes(x) : (ndarray, ndarray)
+    - _breaths(flow) : float
+    - _slope(y) : float
+  }
+  class NightFeatures {
+    - {field} spo2_hist : deque, last 5 min
+    - amp_hist : dict[str, deque]
+    - prev : dict
+    + add_minute(spo2, flow, thorax, abdomen) : dict
+  }
+}
+
+package "services/common/fast_model.py" {
+  class fast_model <<module>> #EDE9FE {
+    + {field} VERSION = "rule-v1"
+    + {field} DROP_LIMIT = 3.0
+    + {field} FULL_CONFIDENCE_AT = 3.0
+    + {field} EVENT, NORMAL : str
+    + predict(minute) : (event, confidence)
+    - _drop(minute, key) : float
+  }
+}
+
+package "used by" {
+  class "detector.py\n(apnea-detector)" as detector <<module>> #FFFFFF
+  class "train.py\n(model-trainer)" as train <<module>> #FFFFFF
+}
+
+note left of fast_model
+  Rule: event when SpO2 drops >= 3 %
+  below the own baseline in this
+  or the previous minute.
+  F1 0.832 on held-out Apnea-ECG
+  (accurate model 0.906, gate >= 0.80)
+  Reads spo2_drop and prev_spo2_drop
+  from the features of one minute.
+end note
+
+note left of NightFeatures
+  causal: uses only the current and
+  earlier minutes, so training and
+  live see the same numbers.
+  apnea-detector: one per night, live.
+  train.py: night_features() per night.
+end note
+
+detector -[hidden]right- train
+fast_model -[hidden]right- features
+detector ..> fast_model : <<use>>
+detector ..> features : <<use>>
+train ..> features : <<use>>
+fast_model .right.> features : <<use>>
+features *-- "1" NightFeatures : creates >
+@enduml

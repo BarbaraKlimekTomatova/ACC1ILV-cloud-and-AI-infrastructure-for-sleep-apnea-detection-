@@ -1,0 +1,104 @@
+@startuml
+skinparam dpi 200
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam linetype ortho
+skinparam nodesep 45
+skinparam ranksep 90
+skinparam ArrowColor #444444
+skinparam ArrowFontSize 7
+skinparam ArrowFontColor #555555
+skinparam component {
+  BorderColor #444444
+  BackgroundColor #FFFFFF
+  StereotypeFontSize 11
+}
+skinparam rectangle {
+  BorderColor #444444
+  BackgroundColor #FFFFFF
+  StereotypeFontSize 11
+  RoundCorner 0
+}
+title Component diagram – provided and required interfaces
+
+legend bottom left
+  |= Colour |= Meaning |
+  |<#DBEAFE> | component of Barbara |
+  |<#EDE9FE> | component of Aliénor |
+  |<#FEF3C7> | infrastructure component |
+  |<#FFFFFF> | «interface» (Kafka topic, SQL, HTTP API) |
+  SQL: one writer per table (ADR 0007).
+endlegend
+
+component "Kafka" as KAFKA <<infrastructure>> #FEF3C7
+
+rectangle "carbon-signal" <<interface>> as I_CS
+rectangle "raw-signals" <<interface>> as I_RAW
+rectangle "alerts" <<interface>> as I_ALT
+rectangle "apnea-events" <<interface>> as I_EVT
+rectangle "night-results" <<interface>> as I_RES
+
+component "model-trainer" as TRN #DBEAFE
+component "carbon-scheduler" as SCH #EDE9FE
+component "device-simulator" as SIM #EDE9FE
+component "alert-check" as ACK #EDE9FE
+component "alert-service" as ASV #EDE9FE
+component "apnea-detector" as DET #DBEAFE
+component "ahi-triage" as TRI #DBEAFE
+component "doctor-dashboard" as DASH #EDE9FE
+
+rectangle "SQL\n(database sleep_apnea,\nall 7 tables)" <<interface>> as I_SQL
+rectangle "/api/generate" <<interface>> as I_LLM
+
+component "PostgreSQL" as DB <<infrastructure>> #FEF3C7
+component "Ollama" as LLM <<external>>
+
+' provided by Kafka
+I_CS <|.up. KAFKA
+I_RAW <|.up. KAFKA
+I_ALT <|.up. KAFKA
+I_EVT <|.up. KAFKA
+I_RES <|.up. KAFKA
+
+' required from Kafka
+SCH "<<use>>" .up.> I_CS
+TRN "<<use>>" .up.> I_CS
+DET .up.> "<<use>>" I_CS
+SIM "<<use>>" .up.> I_RAW
+ACK "<<use>>" .up.> I_RAW
+DET .up.> "<<use>>" I_RAW
+ACK "<<use>>" .up.> I_ALT
+DET .up.> "<<use>>" I_ALT
+ASV "<<use>>" .up.> I_ALT
+DET .up.> "<<use>>" I_EVT
+TRI "<<use>>" .up.> I_EVT
+TRI "<<use>>" .up.> I_RES
+DASH "<<use>>" .up.> I_RES
+
+' required from PostgreSQL and Ollama
+TRN "<<use>>" .down.> I_SQL
+SCH "<<use>>" .down.> I_SQL
+ASV "<<use>>" .down.> I_SQL
+DET "<<use>>" .down.> I_SQL
+TRI "<<use>>" .down.> I_SQL
+DASH "<<use>>" .down.> I_SQL
+TRI "<<use>>" .down.> I_LLM
+
+' provided by PostgreSQL and Ollama
+I_SQL <|.down. DB
+I_LLM <|.down. LLM
+
+' layout only: left-to-right order of each row
+I_CS -[hidden]right- I_RAW
+I_RAW -[hidden]right- I_ALT
+I_ALT -[hidden]right- I_EVT
+I_EVT -[hidden]right- I_RES
+TRN -[hidden]right- SCH
+SCH -[hidden]right- SIM
+SIM -[hidden]right- ACK
+ACK -[hidden]right- ASV
+ASV -[hidden]right- DET
+DET -[hidden]right- TRI
+TRI -[hidden]right- DASH
+@enduml

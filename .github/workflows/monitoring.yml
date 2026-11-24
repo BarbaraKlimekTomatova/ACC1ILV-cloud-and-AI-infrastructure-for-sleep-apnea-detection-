@@ -1,0 +1,35 @@
+# monitoring CI: Prometheus rules (promtool) and the Grafana dashboard "AI & carbon" (UC6)
+name: monitoring
+
+on:
+  push:
+    paths:
+      - "monitoring/**"
+      - "tests/monitoring/**"
+      - "services/**/*.py"
+      - ".github/workflows/monitoring.yml"
+  pull_request:
+    paths:
+      - "monitoring/**"
+      - "tests/monitoring/**"
+      - "services/**/*.py"
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: promtool check and test the rules
+        run: |
+          docker run --rm --entrypoint promtool -v "$PWD/monitoring/prometheus:/p" -w /p/tests \
+            prom/prometheus:v2.55.1 check rules /p/rules/ai-and-carbon.yml
+          docker run --rm --entrypoint promtool -v "$PWD/monitoring/prometheus:/p" -w /p/tests \
+            prom/prometheus:v2.55.1 test rules ai-and-carbon.test.yml
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install pyyaml==6.0.2 pytest==8.3.4
+      - name: Tests
+        run: pytest tests/monitoring
