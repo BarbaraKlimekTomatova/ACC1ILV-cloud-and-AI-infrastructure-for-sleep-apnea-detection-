@@ -66,10 +66,6 @@ Start the cluster and deploy: [k8s/README.md](../../k8s/README.md).
 | `DATABASE_URL` | `postgresql://apnea_detector:dev_apnea_detector@localhost:5432/sleep_apnea` |
 | `USE_DB` | `1` (`0` = no `raw_nights`) |
 | `MODEL_PATH` | `models/model.joblib` (the accurate model from model-trainer) |
-
-The **fast model** is a rule without training in [`services/common/fast_model.py`](../common/fast_model.py)
-(owner: Aliénor). The detector calls its `predict()` in the FAST mode; while it is still a skeleton
-(`NotImplementedError`), the accurate model is used and the log says so.
 | `DEFAULT_CARBON_MODE` / `DEFAULT_CARBON_INTENSITY` | `low_carbon` / `300`, until the first `carbon-signal` |
 | `DEMO_TIME` | empty = real time |
 | `DEADLINE` / `DEADLINE_MARGIN_MIN` / `TZ_DEADLINE` | `08:00` / `120` / `Europe/Vienna` |
@@ -78,6 +74,24 @@ The **fast model** is a rule without training in [`services/common/fast_model.py
 | `ALERT_THRESHOLD` / `MIN_VALID_SPO2` | `80` / `50` (lower = sensor artefact) |
 | `CPU_WATTS` | `15` |
 | `METRICS_PORT` | `8000` (Prometheus `/metrics`) |
+
+## Models
+
+- **accurate:** gradient boosting from model-trainer (`MODEL_PATH`), apnea / hypopnea / normal, F1 0.906.
+- **fast:** the rule `rule-v1` in [`services/common/fast_model.py`](../common/fast_model.py) (owner: Aliénor):
+  an event when SpO₂ drops ≥ 3 % below the baseline in this or the previous minute. No training,
+  F1 0.832 on the held-out nights (gate ≥ 0.80). Used in `high_carbon` close to 08:00.
+
+## Prometheus metrics (`/metrics`, port 8000)
+
+| Metric | What it shows |
+|---|---|
+| `detector_minutes_total{model, event}` | analysed minutes per model and event |
+| `detector_confidence{model}` | histogram of the probability of the predicted event (UC6 A1: low confidence) |
+| `detector_paused` | 1 while the analysis waits for low carbon |
+| `detector_carbon_intensity` | gCO₂/kWh of the newest `carbon-signal` |
+| `detector_gco2_total` | gCO₂ of the analysis (estimate) |
+| `detector_alerts_total` | alerts sent |
 
 ## Tests
 

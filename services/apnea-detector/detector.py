@@ -33,7 +33,7 @@ from zoneinfo import ZoneInfo
 import joblib
 import numpy as np
 from jsonschema import Draft202012Validator
-from prometheus_client import Counter, Gauge, start_http_server
+from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "services" / "common"))
@@ -164,11 +164,7 @@ class RuleModel:
 
 
 def load_fast_model():
-    """RuleModel, or None while fast_model.predict() is still a skeleton (then accurate is used)."""
-    try:
-        FM.predict({f: 0.0 for f in F.FEATURES})
-    except NotImplementedError:
-        return None
+    """The fast model: the rule rule-v1 from services/common/fast_model.py (F1 0.832)."""
     return RuleModel()
 
 
@@ -238,6 +234,8 @@ PAUSED = Gauge("detector_paused", "1 while the analysis waits for low carbon")
 CARBON = Gauge("detector_carbon_intensity", "gCO2/kWh of the newest carbon-signal")
 ALERTS = Counter("detector_alerts_total", "alerts sent")
 GCO2 = Counter("detector_gco2_total", "gCO2 of the analysis (estimate)")
+CONFIDENCE = Histogram("detector_confidence", "probability of the predicted event per minute (UC6 A1)",
+                       ["model"], buckets=(0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 1.0))
 
 stop = threading.Event()
 carbon = dict(DEFAULT_CARBON)            # newest carbon-signal, written by carbon_loop
@@ -408,6 +406,7 @@ def analysis_loop(producer, analyzer, clock):
             producer.produce("apnea-events", key=raw["patient_id"], value=encode(out))
             producer.poll(0)
             MINUTES.labels(out["model"], out["event"]).inc()
+            CONFIDENCE.labels(out["model"]).observe(out["probability"])
             if out["is_last"]:
                 GCO2.inc(out["gco2"])
                 log.info("night %s done (%d minutes)", raw["night_id"], out["minute"] + 1)
@@ -424,8 +423,7 @@ def main():
     accurate = Model.load(MODEL_PATH, ACCURATE)
     fast = load_fast_model()
     clock = Clock(DEMO_TIME)
-    log.info("models: accurate %s, fast %s; local time %s%s", accurate.version,
-             fast.version if fast else "(fast_model.py not ready, accurate is used)",
+    log.info("models: accurate %s, fast %s; local time %s%s", accurate.version, fast.version,
              clock.now().strftime("%H:%M"), " (DEMO_TIME)" if DEMO_TIME else "")
 
     producer = Producer({"bootstrap.servers": KAFKA, "linger.ms": 5, "enable.idempotence": True})

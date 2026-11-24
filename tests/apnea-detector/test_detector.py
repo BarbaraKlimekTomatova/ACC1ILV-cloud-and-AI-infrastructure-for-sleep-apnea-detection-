@@ -154,11 +154,10 @@ def test_wrong_features_are_refused():
         D.Model(b, D.ACCURATE)
 
 
-def test_fast_rule_is_used_as_soon_as_it_is_written(monkeypatch):
-    assert D.load_fast_model() is None or D.load_fast_model().kind == D.FAST   # skeleton -> None
-    monkeypatch.setattr(D.FM, "predict", lambda row: ("apnea_or_hypopnea", 0.8))
+def test_fast_model_is_the_rule(monkeypatch):
     fast = D.load_fast_model()
-    assert fast.kind == D.FAST and fast.version == D.FM.VERSION
+    assert fast.kind == D.FAST and fast.version == D.FM.VERSION == "rule-v1"
+    monkeypatch.setattr(D.FM, "predict", lambda row: ("apnea_or_hypopnea", 0.8))
     a = D.Analyzer(D.Model(fake_bundle(), D.ACCURATE), fast)
     msg = a.process(raw_minute(0), D.FAST, HIGH)
     assert (msg["model"], msg["event"], msg["model_version"]) == ("fast", "apnea_or_hypopnea", "rule-v1")

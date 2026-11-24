@@ -1,0 +1,62 @@
+@startuml
+skinparam dpi 200
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam linetype ortho
+skinparam nodesep 45
+skinparam ranksep 70
+skinparam ArrowColor #444444
+skinparam ArrowFontSize 7
+skinparam ArrowFontColor #555555
+skinparam component {
+  BorderColor #444444
+  BackgroundColor #FFFFFF
+  StereotypeFontSize 11
+}
+skinparam rectangle {
+  BorderColor #444444
+  BackgroundColor #FFFFFF
+  StereotypeFontSize 11
+  RoundCorner 0
+}
+title Component diagram – monitoring (UC6)
+
+legend bottom left
+  |= Colour |= Meaning |
+  |<#DBEAFE> | component of Barbara |
+  |<#EDE9FE> | component of Aliénor |
+  |<#FEF3C7> | monitoring component |
+  |<#FFFFFF> | «interface» |
+  /metrics ports: apnea-detector 8000, ahi-triage 8001, alert-check 8002,
+  alert-service 8003, carbon-scheduler 8004 (ADR 0006).
+endlegend
+
+component "carbon-scheduler" as SCH #EDE9FE
+component "alert-check" as ACK #EDE9FE
+component "apnea-detector" as DET #DBEAFE
+component "alert-service" as ASV #EDE9FE
+component "ahi-triage" as TRI #DBEAFE
+
+rectangle "/metrics\n(Prometheus text format, HTTP)" <<interface>> as I_MET
+component "Prometheus" as PROM <<monitoring>> #FEF3C7
+rectangle "PromQL API" <<interface>> as I_PROM
+component "Grafana" as GRAF <<monitoring>> #FEF3C7
+
+' provided by the services
+I_MET <|.up. SCH
+I_MET <|.up. ACK
+I_MET <|.up. DET
+I_MET <|.up. ASV
+I_MET <|.up. TRI
+
+' Prometheus scrapes /metrics, Grafana asks Prometheus
+PROM "<<use>>" .up.> I_MET
+I_PROM <|.up. PROM
+GRAF "<<use>>" .up.> I_PROM
+
+SCH -[hidden]right- ACK
+ACK -[hidden]right- DET
+DET -[hidden]right- ASV
+ASV -[hidden]right- TRI
+@enduml
