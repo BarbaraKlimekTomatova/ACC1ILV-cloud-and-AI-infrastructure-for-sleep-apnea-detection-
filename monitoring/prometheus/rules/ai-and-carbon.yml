@@ -1,0 +1,66 @@
+# UC6 A1 (AI behaviour) and the carbon side of UC6. Loaded by Prometheus with
+#   rule_files: ["rules/*.yml"]
+# The recording rules give short names, the alert rules compare today with last week.
+groups:
+  - name: ai-and-carbon-recording
+    interval: 1m
+    rules:
+      - record: detector:event_share:6h
+        expr: |
+          sum(rate(detector_minutes_total{event!="normal"}[6h]))
+          / sum(rate(detector_minutes_total[6h]))
+      - record: detector:confidence_avg:6h
+        expr: |
+          sum by (model) (rate(detector_confidence_sum[6h]))
+          / sum by (model) (rate(detector_confidence_count[6h]))
+      - record: detector:low_confidence_share:1h
+        expr: |
+          sum by (model) (rate(detector_confidence_bucket{le="0.7"}[1h]))
+          / sum by (model) (rate(detector_confidence_count[1h]))
+      - record: detector:gco2_per_night:1d
+        expr: |
+          sum(increase(detector_gco2_total[1d]))
+          / sum(increase(triage_nights_total[1d]))
+      - record: triage:llm_gco2_per_summary:1d
+        expr: |
+          sum(increase(triage_llm_gco2_total[1d]))
+          / (sum(increase(triage_nights_total[1d])) - sum(increase(triage_llm_failed_total[1d])))
+
+  - name: ai-and-carbon-alerts
+    rules:
+      - alert: ApneaEventShareDrift
+        expr: |
+          detector:event_share:6h > 0
+          and abs(detector:event_share:6h - detector:event_share:6h offset 1w)
+              > 0.5 * detector:event_share:6h offset 1w
+        for: 30m
+        labels: {severity: warning, use_case: UC6-A1}
+        annotations:
+          summary: "Share of event minutes changed by more than 50 % against last week"
+          description: >-
+            Now {{ $value | humanizePercentage }} of the minutes are events. Drift is only a sign:
+            check the data, then start a retraining with triggered_by = drift (UC7).
+
+      - alert: ModelConfidenceDrift
+        expr: |
+          abs(detector:confidence_avg:6h - detector:confidence_avg:6h offset 1w) > 0.1
+        for: 30m
+        labels: {severity: warning, use_case: UC6-A1}
+        annotations:
+          summary: "Average confidence of the {{ $labels.model }} model moved by more than 0.1 against last week"
+          description: "Average confidence now {{ $value | printf \"%.2f\" }} away from last week. Check the input data, maybe retrain (UC7)."
+
+      - alert: ModelLowConfidence
+        expr: detector:low_confidence_share:1h > 0.3
+        for: 15m
+        labels: {severity: warning, use_case: UC6-A1}
+        annotations:
+          summary: "More than 30 % of the minutes of the {{ $labels.model }} model have confidence below 0.7"
+          description: "The model is unsure for {{ $value | humanizePercentage }} of the minutes in the last hour."
+
+      - alert: DetectorPausedLong
+        expr: max_over_time(detector_paused[2h]) == 1 and min_over_time(detector_paused[2h]) == 1
+        labels: {severity: warning, use_case: UC5}
+        annotations:
+          summary: "The detector waits for low carbon for more than 2 hours"
+          description: "Nights pile up in Kafka. The 08:00 deadline (ADR 0006) may be missed."

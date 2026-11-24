@@ -1,0 +1,79 @@
+# promtool test rules monitoring/prometheus/tests/ai-and-carbon.test.yml
+# Fake series, 1 sample per minute. Checks that each UC6 alert fires when it should and stays quiet otherwise.
+rule_files:
+  - ../rules/ai-and-carbon.yml
+evaluation_interval: 1m
+
+tests:
+  # fast model: 60 minutes per hour, 30 of them below 0.7 (50 %) -> ModelLowConfidence
+  # accurate model: 60 minutes per hour, 6 below 0.7 (10 %) -> quiet
+  - interval: 1m
+    input_series:
+      - series: 'detector_confidence_bucket{model="fast",le="0.7"}'
+        values: '0+0.5x120'
+      - series: 'detector_confidence_count{model="fast"}'
+        values: '0+1x120'
+      - series: 'detector_confidence_bucket{model="accurate",le="0.7"}'
+        values: '0+0.1x120'
+      - series: 'detector_confidence_count{model="accurate"}'
+        values: '0+1x120'
+    alert_rule_test:
+      - eval_time: 90m
+        alertname: ModelLowConfidence
+        exp_alerts:
+          - exp_labels: {severity: warning, use_case: UC6-A1, model: fast}
+            exp_annotations:
+              summary: "More than 30 % of the minutes of the fast model have confidence below 0.7"
+              description: "The model is unsure for 50% of the minutes in the last hour."
+
+  # last week 10 % event minutes, now 30 % -> ApneaEventShareDrift
+  - interval: 1h
+    input_series:
+      - series: 'detector_minutes_total{model="accurate",event="apnea"}'
+        values: '0+6x167 1008+18x10'
+      - series: 'detector_minutes_total{model="accurate",event="normal"}'
+        values: '0+54x167 9018+42x10'
+    alert_rule_test:
+      - eval_time: 176h
+        alertname: ApneaEventShareDrift
+        exp_alerts:
+          - exp_labels: {severity: warning, use_case: UC6-A1}
+            exp_annotations:
+              summary: "Share of event minutes changed by more than 50 % against last week"
+              description: "Now 30% of the minutes are events. Drift is only a sign: check the data, then start a retraining with triggered_by = drift (UC7)."
+      - eval_time: 160h
+        alertname: ApneaEventShareDrift
+        exp_alerts: []
+
+  # average confidence 0.9 last week, 0.75 now -> ModelConfidenceDrift
+  - interval: 1h
+    input_series:
+      - series: 'detector_confidence_sum{model="accurate"}'
+        values: '0+54x167 9018+45x10'
+      - series: 'detector_confidence_count{model="accurate"}'
+        values: '0+60x177'
+    alert_rule_test:
+      - eval_time: 176h
+        alertname: ModelConfidenceDrift
+        exp_alerts:
+          - exp_labels: {severity: warning, use_case: UC6-A1, model: accurate}
+            exp_annotations:
+              summary: "Average confidence of the accurate model moved by more than 0.1 against last week"
+              description: "Average confidence now 0.15 away from last week. Check the input data, maybe retrain (UC7)."
+
+  # detector paused for 3 hours -> DetectorPausedLong
+  - interval: 10m
+    input_series:
+      - series: 'detector_paused'
+        values: '0 0 1x20'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: DetectorPausedLong
+        exp_alerts: []
+      - eval_time: 200m
+        alertname: DetectorPausedLong
+        exp_alerts:
+          - exp_labels: {severity: warning, use_case: UC5}
+            exp_annotations:
+              summary: "The detector waits for low carbon for more than 2 hours"
+              description: "Nights pile up in Kafka. The 08:00 deadline (ADR 0006) may be missed."

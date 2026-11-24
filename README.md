@@ -140,7 +140,7 @@ tests/<service>/     unit tests (pytest, settings in pytest.ini)
 models/              trained models (*.joblib, made by model-trainer, not committed)
 .github/workflows/   CI, one workflow per service
 k8s/                 Kubernetes manifests, one file per service (see k8s/README.md)
-monitoring/          Prometheus and Grafana (to do)
+monitoring/          Prometheus rules (UC6 warnings) and Grafana dashboards
 notebooks/           pipeline_walkthrough.ipynb: one real night through all services, without Kafka or Docker
 ```
 
@@ -148,9 +148,9 @@ notebooks/           pipeline_walkthrough.ipynb: one real night through all serv
 
 ✅ done · 🟡 still to do. In the order we build it: design → data → model → services → containers and CI/CD → Kubernetes → monitoring and carbon → demo.
 
-**Status on 24 Nov 2026: 45 done, 31 to do.** Done so far: the design (use cases, ADRs, UML), the data pipeline and
+**Status on 24 Nov 2026: 47 done, 29 to do.** Done so far: the design (use cases, ADRs, UML), the data pipeline and
 database, the accurate model with the F1 gate, the services device-simulator, apnea-detector, ahi-triage, alert-check, alert-service and
-carbon-scheduler, the fast model (rule, F1 0.832), CI for the first three, and the Kubernetes manifests of Barbara's services (tested on kind: one real night went through the whole
+carbon-scheduler, the fast model (rule, F1 0.832), the Grafana dashboard "AI & carbon" with the UC6 drift and confidence warnings, CI for the first three, and the Kubernetes manifests of Barbara's services (tested on kind: one real night went through the whole
 flow). Next: CI for the new services, the K8s base (Kafka, PostgreSQL), dashboard, monitoring and the demo.
 
 ### 1. Design
@@ -253,10 +253,10 @@ flow). Next: CI for the new services, the K8s base (Kafka, PostgreSQL), dashboar
 | Prometheus `/metrics` in alert-check, alert-service (alert latency < 5 s), carbon-scheduler | Aliénor | ✅ |
 | Prometheus `/metrics` in device-simulator | Aliénor | 🟡 |
 | Kafka exporter: lag of the nights waiting in Kafka (ADR 0006) | Aliénor | 🟡 |
-| Grafana dashboard "AI & carbon" | Barbara | 🟡 |
+| Grafana dashboard "AI & carbon" ([monitoring/](monitoring/README.md)) | Barbara | ✅ |
 | Carbon-aware model switching: carbon-scheduler sends the mode, the detector switches to the fast model | Aliénor | ✅ |
 | Grafana shows the CO₂ saved against the F1 lost | Aliénor | 🟡 |
-| UC6: drift and low-confidence warnings | both | 🟡 |
+| UC6: drift and low-confidence warnings (Prometheus rules, tested with `promtool`) | both | ✅ |
 
 ### 8. Demo and checkpoint 2 (4 Dec 2026)
 
@@ -281,6 +281,6 @@ Both of us work on every criterion. ✅ / 🟡 as in the tables above.
 | AI model (10 %) | features ✅, accurate model (F1 0.906) ✅, retraining (UC7) ✅, LLM summary with a local model ✅ | fast model as a rule (F1 0.832) ✅, model comparison script 🟡 |
 | Carbon footprint (10 %) | CO₂ per night in apnea-detector ✅, CodeCarbon in model-trainer ✅, CO₂ of every LLM call ✅, training only in a low-carbon window ✅ | carbon-scheduler with regions AT / NO / PL ✅, carbon-aware model switching ✅, `carbon_decisions` table ✅ |
 | Deployment, Docker and Kubernetes (10 %) | Dockerfiles of her 3 services ✅, detector Deployment + HPA, triage Deployment, trainer CronJob, Secrets ✅ (tested on kind) | `docker-compose.yml` ✅, Dockerfile of device-simulator ✅, Dockerfiles of alert-check, alert-service, carbon-scheduler ✅, Dockerfile of doctor-dashboard 🟡, K8s base (Kafka, PostgreSQL, node labels) 🟡, carbon-aware redeployment 🟡 |
-| Monitoring, Prometheus and Grafana (10 %) | `/metrics` in apnea-detector and ahi-triage ✅, Grafana "AI & carbon" 🟡, UC6 warnings together 🟡 | Prometheus + Grafana "System health" 🟡, `/metrics` in alert-check, alert-service, carbon-scheduler ✅, in device-simulator 🟡, Kafka exporter 🟡, Grafana CO₂ saved vs F1 lost 🟡, UC6 warnings together 🟡 |
+| Monitoring, Prometheus and Grafana (10 %) | `/metrics` in apnea-detector and ahi-triage ✅, Grafana "AI & carbon" ✅, UC6 warnings together ✅ | Prometheus + Grafana "System health" 🟡, `/metrics` in alert-check, alert-service, carbon-scheduler ✅, in device-simulator 🟡, Kafka exporter 🟡, Grafana CO₂ saved vs F1 lost 🟡, UC6 warnings together ✅ |
 | CI/CD (5 %) | CI tests of her 3 services ✅, F1 gate in GitHub Actions ✅ | CI tests of device-simulator ✅, CI tests of her other services 🟡, `tests/data` in CI 🟡, CD: build, push and deploy 🟡 |
 | Sustainability trade-offs (5 %) | carbon-aware analysis in the detector: accurate, pause or fast before 08:00 (ADR 0003) ✅, training only in a low-carbon window ✅ | model comparison F1 / run time / gCO₂ 🟡, CO₂ saved vs F1 lost in Grafana 🟡, redeployment to a cleaner region (ADR 0004) 🟡 |
