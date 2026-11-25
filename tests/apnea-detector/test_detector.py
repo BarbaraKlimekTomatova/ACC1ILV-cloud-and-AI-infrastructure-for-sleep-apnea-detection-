@@ -223,3 +223,12 @@ def test_raw_nights_minute_by_minute():
     assert db.append_minute(raw_minute(2, night_id=night, patient_id="P01"))      # minute 1 missing
     spo2 = db.conn.execute("SELECT spo2 FROM raw_nights WHERE night_id = %s", (night,)).fetchone()[0]
     assert len(spo2) == 180 and spo2[60] is None and spo2[120] == 96.0
+
+
+def test_raw_nights_update_has_the_order_of_signals():
+    """append_minute writes a fixed UPDATE text: its columns must keep the order of SIGNALS."""
+    import inspect
+    assert list(D.RawNights.SIGNALS) == ["spo2", "flow", "thorax", "abdomen"]
+    src = inspect.getsource(D.RawNights.append_minute)
+    pos = [src.index(f"{s} = {s} || %s::jsonb") for s in D.RawNights.SIGNALS]
+    assert pos == sorted(pos)

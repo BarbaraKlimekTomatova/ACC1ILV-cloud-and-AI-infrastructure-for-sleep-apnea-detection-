@@ -277,8 +277,11 @@ class Results:
                                  (night_id,)).fetchone() is not None
 
     def save(self, result):
+        # fixed SQL text (psycopg wants a literal string), same column order as COLUMNS
         self.conn.execute(
-            f"INSERT INTO results ({', '.join(self.COLUMNS)}) VALUES ({', '.join(['%s'] * len(self.COLUMNS))})",
+            "INSERT INTO results (night_id, ahi, severity, event_count, model, model_version, carbon_mode, "
+            "region, kwh, gco2, deadline_met, llm_summary, llm_model, llm_gco2) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
             [result.get(c) for c in self.COLUMNS])
 
 

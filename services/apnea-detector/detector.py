@@ -277,12 +277,15 @@ class RawNights:
         with self.conn.transaction():
             row = self.conn.execute("SELECT jsonb_array_length(spo2) FROM raw_nights "
                                     "WHERE night_id = %s FOR UPDATE", (raw["night_id"],)).fetchone()
+            if row is None:                 # ensure_night() always runs first
+                raise RuntimeError(f"night {raw['night_id']} is not in raw_nights")
             gap = int(raw["minute"]) - row[0] // self.SIGNALS["spo2"]
             if gap < 0:
                 return False
+            # fixed SQL text (psycopg wants a literal string), same column order as SIGNALS
             self.conn.execute(
-                "UPDATE raw_nights SET " + ", ".join(f"{s} = {s} || %s::jsonb" for s in self.SIGNALS)
-                + " WHERE night_id = %s",
+                "UPDATE raw_nights SET spo2 = spo2 || %s::jsonb, flow = flow || %s::jsonb, "
+                "thorax = thorax || %s::jsonb, abdomen = abdomen || %s::jsonb WHERE night_id = %s",
                 [json.dumps([None] * (gap * n) + list(raw[s])) for s, n in self.SIGNALS.items()]
                 + [raw["night_id"]])
         return True

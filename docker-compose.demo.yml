@@ -1,0 +1,28 @@
+# Demo override for the whole flow in docker compose (owner: Barbara).
+# Same 5 demo nights as k8s/e2e.sh, but faster and always the same result:
+#   no LLM (no Ollama needed), burst mode (all minutes at once), fixed carbon mode low_carbon.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.demo.yml \
+#     --profile detector --profile triage --profile sim up --build -d
+#   bash scripts/compose-e2e.sh            # does the same up, then checks every step
+#
+# For the high-carbon demo (pause at night, fast model before 08:00) change the 3 lines marked "demo".
+services:
+  apnea-detector:
+    environment:
+      DEFAULT_CARBON_MODE: low_carbon      # demo: high_carbon
+      DEMO_TIME: ""                        # demo: "06:30"
+
+  ahi-triage:
+    environment:
+      USE_LLM: "0"
+      DEMO_TIME: ""                        # same clock as the detector
+
+  carbon-scheduler:
+    environment:
+      FORCE_MODE: low_carbon               # demo: high_carbon
+
+  device-simulator:
+    environment:
+      BURST: "1"
+      NIGHTS: ""                           # empty = the 5 demo nights (P01-P05)
