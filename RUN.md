@@ -77,6 +77,15 @@ PostgreSQL `localhost:5432`, Kafka `localhost:9092`, `/metrics` on ports 8000–
 Without Ollama set `USE_LLM: "0"` for ahi-triage in `docker-compose.yml`.
 Stop with `docker compose down`, start from zero (empty database) with `docker compose down -v`.
 
+**Demo with a check** (no LLM, burst, fixed carbon mode, `docker-compose.demo.yml`): starts everything, sends the
+5 demo nights and fails when a step is missing (`raw_nights`, `results`, alerts, `/metrics`):
+
+```
+bash scripts/compose-e2e.sh
+```
+
+`FRESH=1 bash scripts/compose-e2e.sh` deletes the local database first.
+
 ## 4. Tests (no Docker needed)
 
 ```

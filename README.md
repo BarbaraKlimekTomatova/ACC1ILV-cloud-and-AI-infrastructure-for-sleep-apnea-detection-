@@ -136,7 +136,7 @@ diagrams/components/ component diagram with interfaces (PlantUML)
 diagrams/db_schema/  database schema (PlantUML)
 db/init/             PostgreSQL tables and users (SQL)
 kafka/               Kafka messages: schemas/ (rules), examples/ (one sample each), messages/ (generated, not committed)
-doc/                 database tables, possible GCP architecture, known limits of the model
+doc/                 database tables, GCP architecture, model limits, NFR results, CO₂ trade-offs, presentation notes
 data/                data pipeline: 01_download.py, 02_clean.py, 03_to_kafka_messages.py; raw/ and clean/ nights (small .npz, in git)
 services/<service>/  one folder per service: <service>.py, Dockerfile, requirements.txt, README.md
 services/common/     features.py, shared by the detector and the model-trainer
@@ -146,7 +146,7 @@ models/              trained models (*.joblib, made by model-trainer, not commit
 k8s/                 Kubernetes manifests, one file per service (see k8s/README.md)
 monitoring/          Prometheus rules (UC6 warnings) and Grafana dashboards
 notebooks/           pipeline_walkthrough.ipynb: one real night through all services, without Kafka or Docker
-scripts/             ahi_vs_clinical.py: AHI of our models against the clinical AHI (doc/model-limits.md)
+scripts/             ahi_vs_clinical.py (doc/model-limits.md), compose-e2e.sh: whole flow in docker compose
 ```
 
 ## Work split and status
@@ -267,12 +267,12 @@ flow). Next: CI for the new services, the K8s base (Kafka, PostgreSQL), dashboar
 
 | Task | Owner | Status |
 | --- | --- | --- |
-| Whole flow end to end in docker compose | both | 🟡 |
+| Whole flow end to end in docker compose: check script and demo override ✅ (`scripts/compose-e2e.sh`, `docker-compose.demo.yml`), Prometheus + Grafana in compose 🟡 | both | 🟡 |
 | Whole flow end to end in Kubernetes: device-simulator → apnea-detector → ahi-triage → `results` ✅ (`k8s/e2e.sh`, 5 demo nights, HPA 1 → 3 pods), alert path and doctor-dashboard 🟡 | both | 🟡 |
 | Check the non-functional requirements: burst → HPA 1–3 pods ✅, alert < 5 s 🟡, one broker down without data loss 🟡, deadline 08:00 ✅ ([doc/nfr-results.md](doc/nfr-results.md)) | both | 🟡 |
 | Known limits of the model for the presentation ([doc/model-limits.md](doc/model-limits.md), `scripts/ahi_vs_clinical.py`: AHI from minutes is lower than the clinical AHI, result depends on the carbon mode) | Barbara | ✅ |
-| Measured CO₂ and sustainability trade-offs for the presentation | both | 🟡 |
-| 5-minute presentation | both | 🟡 |
+| Measured CO₂ and sustainability trade-offs for the presentation: training (CodeCarbon), detector, fast rule, LLM, AHI effect ✅ ([doc/co2-tradeoffs.md](doc/co2-tradeoffs.md)), model comparison and region move 🟡 | both | 🟡 |
+| 5-minute presentation: architecture, model and limits, AI & carbon ✅ ([doc/presentation-barbara.md](doc/presentation-barbara.md)), live demo and System health 🟡 | both | 🟡 |
 
 ### Who covers which grading criterion
 

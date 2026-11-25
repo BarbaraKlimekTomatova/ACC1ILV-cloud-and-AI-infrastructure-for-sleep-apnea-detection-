@@ -150,7 +150,7 @@ class Model:
         if self.kind == FAST:
             p_event = 1.0 - p.get("normal", 0.0)
             return ("apnea_or_hypopnea", p_event) if p_event >= 0.5 else ("normal", 1.0 - p_event)
-        event = max(p, key=p.get)
+        event = max(p, key=lambda c: p[c])
         return event, p[event]
 
 
@@ -215,7 +215,7 @@ class Analyzer:
             # carbon intensity of carbon-signal. CodeCarbon cannot measure millisecond steps.
             kwh = night[2] * CPU_WATTS / 3.6e6
             msg["kwh"] = round(kwh, 9)
-            msg["gco2"] = round(kwh * (carbon.get("carbon_intensity") or 0.0), 6)
+            msg["gco2"] = round(kwh * float(carbon.get("carbon_intensity") or 0.0), 6)
             del self.nights[raw["night_id"]]
         return msg
 
@@ -277,12 +277,15 @@ class RawNights:
         with self.conn.transaction():
             row = self.conn.execute("SELECT jsonb_array_length(spo2) FROM raw_nights "
                                     "WHERE night_id = %s FOR UPDATE", (raw["night_id"],)).fetchone()
+            if row is None:                 # ensure_night() always runs first
+                raise RuntimeError(f"night {raw['night_id']} is not in raw_nights")
             gap = int(raw["minute"]) - row[0] // self.SIGNALS["spo2"]
             if gap < 0:
                 return False
+            # fixed SQL text (psycopg wants a literal string), same column order as SIGNALS
             self.conn.execute(
-                "UPDATE raw_nights SET " + ", ".join(f"{s} = {s} || %s::jsonb" for s in self.SIGNALS)
-                + " WHERE night_id = %s",
+                "UPDATE raw_nights SET spo2 = spo2 || %s::jsonb, flow = flow || %s::jsonb, "
+                "thorax = thorax || %s::jsonb, abdomen = abdomen || %s::jsonb WHERE night_id = %s",
                 [json.dumps([None] * (gap * n) + list(raw[s])) for s, n in self.SIGNALS.items()]
                 + [raw["night_id"]])
         return True
@@ -297,10 +300,18 @@ def consumer(group, **extra):
                      **extra})
 
 
+def payload(msg):
+    """Bytes of a Kafka message (msg.value() is None for an empty message)."""
+    value = msg.value()
+    if value is None:
+        raise ValueError("empty message")
+    return value
+
+
 def read_raw(msg):
     """Kafka message -> valid raw-signals dict, or None (logged and skipped)."""
     try:
-        raw = json.loads(msg.value())
+        raw = json.loads(payload(msg))
         RAW_SCHEMA.validate(raw)
         return raw
     except Exception as e:  # noqa: BLE001  one bad message must not stop the detector
@@ -351,7 +362,7 @@ def carbon_loop():
     c = consumer("apnea-detector-carbon", **{"enable.auto.commit": False})
     parts = []
     for p in c.list_topics("carbon-signal", timeout=10).topics["carbon-signal"].partitions:
-        low, high = c.get_watermark_offsets(TopicPartition("carbon-signal", p), timeout=10)
+        low, high = c.get_watermark_offsets(TopicPartition("carbon-signal", p), timeout=10) or (0, 0)
         parts.append(TopicPartition("carbon-signal", p, high - 1 if high > low else OFFSET_END))
     if all(tp.offset == OFFSET_END for tp in parts):
         carbon_known.set()                   # topic empty: DEFAULT_CARBON_MODE until the first message
@@ -361,10 +372,12 @@ def carbon_loop():
         if msg is None or msg.error():
             continue
         try:
-            sig = json.loads(msg.value())
-            sig["mode"], sig["carbon_intensity"], sig["region"]
+            sig = json.loads(payload(msg))
+            missing = {"mode", "carbon_intensity", "region"} - set(sig)
+            if missing:
+                raise KeyError(f"missing {sorted(missing)}")
         except Exception:  # noqa: BLE001
-            log.error("bad carbon-signal message: %r", msg.value()[:200])
+            log.error("bad carbon-signal message: %r", (msg.value() or b"")[:200])
             continue
         carbon.update(mode=sig["mode"], carbon_intensity=sig["carbon_intensity"], region=sig["region"])
         carbon_known.set()
@@ -397,12 +410,14 @@ def analysis_loop(producer, analyzer, clock):
             continue
         if paused:
             # from a partition assigned during this poll: put it back for later
-            c.seek(TopicPartition(msg.topic(), msg.partition(), msg.offset()))
+            topic, part, offset = msg.topic(), msg.partition(), msg.offset()
+            if topic is not None and part is not None and offset is not None:
+                c.seek(TopicPartition(topic, part, offset))
             c.pause(c.assignment())
             continue
         raw = read_raw(msg)
         out = analyzer.process(raw, action, carbon) if raw else None
-        if out:
+        if raw and out:
             producer.produce("apnea-events", key=raw["patient_id"], value=encode(out))
             producer.poll(0)
             MINUTES.labels(out["model"], out["event"]).inc()

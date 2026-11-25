@@ -179,3 +179,14 @@ def test_results_row():
     row = db.conn.execute("SELECT ahi, severity, event_count, model, deadline_met, llm_summary "
                           "FROM results WHERE night_id = %s", (nid,)).fetchone()
     assert row == (pytest.approx(r["ahi"]), r["severity"], r["event_count"], "accurate", True, None)
+
+
+def test_results_insert_has_the_order_of_columns():
+    """Results.save writes a fixed INSERT text: its columns must be COLUMNS in the same order."""
+    import inspect
+    import re
+    src = inspect.getsource(T.Results.save)
+    cols = re.search(r"INSERT INTO results \(([^)]*)\)", src.replace('" "', "").replace('"\n            "', ""))
+    assert cols is not None
+    assert [c.strip() for c in cols.group(1).split(",")] == list(T.Results.COLUMNS)
+    assert src.count("%s") == len(T.Results.COLUMNS)
