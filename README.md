@@ -271,7 +271,7 @@ flow). Next: CI for the new services, the K8s base (Kafka, PostgreSQL), dashboar
 | Whole flow end to end in Kubernetes: device-simulator → apnea-detector → ahi-triage → `results` ✅ (`k8s/e2e.sh`, 5 demo nights, HPA 1 → 3 pods), alert path and doctor-dashboard 🟡 | both | 🟡 |
 | Check the non-functional requirements: burst → HPA 1–3 pods ✅, alert < 5 s 🟡, one broker down without data loss 🟡, deadline 08:00 ✅ ([doc/nfr-results.md](doc/nfr-results.md)) | both | 🟡 |
 | Known limits of the model for the presentation ([doc/model-limits.md](doc/model-limits.md), `scripts/ahi_vs_clinical.py`: AHI from minutes is lower than the clinical AHI, result depends on the carbon mode) | Barbara | ✅ |
-| Measured CO₂ and sustainability trade-offs for the presentation: detector, fast rule, LLM, AHI effect ✅ ([doc/co2-tradeoffs.md](doc/co2-tradeoffs.md)), training gCO₂ and model comparison 🟡 | both | 🟡 |
+| Measured CO₂ and sustainability trade-offs for the presentation: training (CodeCarbon), detector, fast rule, LLM, AHI effect ✅ ([doc/co2-tradeoffs.md](doc/co2-tradeoffs.md)), model comparison and region move 🟡 | both | 🟡 |
 | 5-minute presentation: architecture, model and limits, AI & carbon ✅ ([doc/presentation-barbara.md](doc/presentation-barbara.md)), live demo and System health 🟡 | both | 🟡 |
 
 ### Who covers which grading criterion

@@ -9,12 +9,13 @@ Team member 2 part (Aliénor): the model comparison script and the effect of wai
 
 | Step | How it is measured | Value | Source |
 | --- | --- | ---: | --- |
-| Training the accurate model (once per new version, UC7) | CodeCarbon around the training (ADR 0010) | 🟡 run below | `model_versions.gco2`, `train.py` prints `training energy: ... gCO2` |
-| One night in the apnea-detector, accurate model | CPU time × CPU power × carbon intensity | **≈ 0.002 g** (0.0015–0.0022, 5 nights = 0.009 g) | `detector_gco2_total`, `results.gco2`, [nfr-results.md](nfr-results.md) |
+| Training the accurate model (once per new version, UC7) | CodeCarbon around the training (ADR 0010) | **≈ 0.021 g** (0.00019 kWh, 24 s, region AT, MacBook, 25 Nov) | `model_versions.gco2`, `train.py` prints `training energy: ... gCO2` |
+| One night in the apnea-detector, accurate model | CPU time × CPU power × carbon intensity | **≈ 0.002–0.003 g** (kind: 0.0015–0.0022, 5 nights = 0.009 g; docker compose 25 Nov: 0.0024–0.0029, 5 nights = 0.013 g) | `detector_gco2_total`, `results.gco2`, [nfr-results.md](nfr-results.md), `scripts/compose-e2e.sh` |
 | One night, fast rule (high_carbon) | same | **≈ 50× less for the classification** (below 1 ms instead of about 50 ms CPU per night); the features cost the same in both modes | [model-limits.md](model-limits.md) |
 | LLM summary of one night (Ollama, llama3.2:1b) | Ollama run time × `LLM_WATTS` (30 W) × carbon intensity | 🟡 run below (formula: 3 s → 0.0075 g at 300 gCO₂/kWh) | `results.llm_gco2`, `triage_llm_gco2_total` |
 
-Order of size: one LLM summary of a few seconds costs about as much as several nights of analysis.
+Order of size: one training ≈ 10 nights of analysis, and it runs only for a new model version, not every night.
+One LLM summary of a few seconds costs about as much as several nights of analysis.
 So the LLM is the first thing to switch off in high carbon (`USE_LLM: "0"`), not the accurate model.
 
 ## 2. What we gain or lose
@@ -31,6 +32,7 @@ So the LLM is the first thing to switch off in high carbon (`USE_LLM: "0"`), not
 
 ```
 source .venv312/bin/activate
+pip install codecarbon==3.3.2
 python services/model-trainer/train.py --no-db --version co2-check --out /tmp/co2-check.joblib
 ```
 The last lines print `training energy: ... kWh, ... gCO2` (`--out` keeps `models/model.joblib` as it is). Put the gCO₂ in the table.

@@ -56,7 +56,8 @@ echo "before: raw-signals $raw0, apnea-events $events0, alerts $alerts0"
 
 step "device-simulator (burst, 5 demo nights)"
 t0=$(date +%s)
-$DC up --build --no-deps device-simulator           # runs in the foreground until all nights are sent
+$DC build device-simulator
+$DC run --rm --no-deps device-simulator              # runs until all nights are sent, then exits
 sent=$(( $(offsets raw-signals) - raw0 ))
 echo "raw-signals: $sent new messages"
 [ "$sent" -gt 0 ] || fail "the simulator sent nothing"
