@@ -232,3 +232,17 @@ def test_raw_nights_update_has_the_order_of_signals():
     src = inspect.getsource(D.RawNights.append_minute)
     pos = [src.index(f"{s} = {s} || %s::jsonb") for s in D.RawNights.SIGNALS]
     assert pos == sorted(pos)
+
+
+def test_empty_kafka_message_is_skipped():
+    """msg.value() is None for an empty message: read_raw logs it and returns None."""
+    class Empty:
+        def value(self):
+            return None
+
+        def offset(self):
+            return 7
+
+    with pytest.raises(ValueError):
+        D.payload(Empty())
+    assert D.read_raw(Empty()) is None
