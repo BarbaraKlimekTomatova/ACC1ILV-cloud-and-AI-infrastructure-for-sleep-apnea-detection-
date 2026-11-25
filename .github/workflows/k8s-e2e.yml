@@ -1,0 +1,58 @@
+name: k8s-e2e
+
+on:
+  push:
+    paths:
+      - "k8s/**"
+      - "services/apnea-detector/**"
+      - "services/ahi-triage/**"
+      - "services/model-trainer/**"
+      - "services/common/**"
+      - "services/device-simulator/**"
+      - "db/init/**"
+      - "kafka/schemas/**"
+      - ".github/workflows/k8s-e2e.yml"
+  pull_request:
+    paths:
+      - "k8s/**"
+      - "services/apnea-detector/**"
+      - "services/ahi-triage/**"
+      - "services/model-trainer/**"
+      - "services/common/**"
+      - "services/device-simulator/**"
+      - "db/init/**"
+      - "kafka/schemas/**"
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Train the accurate model (goes into the detector image)
+        run: |
+          pip install -r services/model-trainer/requirements.txt
+          python services/model-trainer/train.py --no-db --no-carbon --version "accurate-k8s-e2e-${{ github.run_number }}"
+      - uses: helm/kind-action@v1
+        with:
+          config: k8s/kind/cluster.yaml
+          cluster_name: apnea
+      - name: K8s base (Strimzi Kafka, topics, PostgreSQL)
+        run: bash k8s/base/install.sh
+      - name: Barbara's services without LLM (no Ollama in CI)
+        run: USE_LLM=0 bash k8s/apps.sh
+      - name: End to end (5 demo nights -> results)
+        run: bash k8s/e2e.sh
+      - name: Debug on failure
+        if: failure()
+        run: |
+          kubectl get all,kafkatopic,hpa -o wide
+          kubectl describe pods | tail -n 120
+          kubectl logs deployment/apnea-detector --tail=100 || true
+          kubectl logs deployment/ahi-triage --tail=100 || true
+          kubectl logs job/device-simulator --all-containers --tail=50 || true

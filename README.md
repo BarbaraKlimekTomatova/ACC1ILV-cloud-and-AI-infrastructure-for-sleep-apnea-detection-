@@ -120,6 +120,10 @@ The 9 decisions that shape our architecture are in [ADR/](ADR/README.md).
 
 ---
 
+## How to run
+
+Setup, Kubernetes on kind, docker compose and tests: see **[RUN.md](RUN.md)**.
+
 ## Repository structure
 
 ```
@@ -241,7 +245,7 @@ flow). Next: CI for the new services, the K8s base (Kafka, PostgreSQL), dashboar
 | model-trainer CronJob (Sunday 02:00) + PVC for the models, DB and LLM Secrets | Barbara | ✅ |
 | Kafka topics in Kubernetes (KafkaTopic resources), device-simulator as a Job, Deployments of Aliénor's other services | Aliénor | 🟡 |
 | Carbon-aware redeployment and scaling (UC5, ADR 0004) | Aliénor | 🟡 |
-| Local cluster on kind, then GKE | both | 🟡 |
+| Local cluster on kind ✅ (`k8s/kind/cluster.yaml`, `k8s/base/install.sh`, `k8s/apps.sh`), then GKE 🟡 | both | 🟡 |
 
 ### 7. Monitoring and carbon footprint
 
@@ -264,8 +268,8 @@ flow). Next: CI for the new services, the K8s base (Kafka, PostgreSQL), dashboar
 | Task | Owner | Status |
 | --- | --- | --- |
 | Whole flow end to end in docker compose | both | 🟡 |
-| Whole flow end to end in Kubernetes | both | 🟡 |
-| Check the non-functional requirements: burst → HPA 1–3 pods, alert < 5 s, one broker down without data loss, deadline 08:00 | both | 🟡 |
+| Whole flow end to end in Kubernetes: device-simulator → apnea-detector → ahi-triage → `results` ✅ (`k8s/e2e.sh`, 5 demo nights, HPA 1 → 3 pods), alert path and doctor-dashboard 🟡 | both | 🟡 |
+| Check the non-functional requirements: burst → HPA 1–3 pods ✅, alert < 5 s 🟡, one broker down without data loss 🟡, deadline 08:00 ✅ ([doc/nfr-results.md](doc/nfr-results.md)) | both | 🟡 |
 | Known limits of the model for the presentation ([doc/model-limits.md](doc/model-limits.md), `scripts/ahi_vs_clinical.py`: AHI from minutes is lower than the clinical AHI, result depends on the carbon mode) | Barbara | ✅ |
 | Measured CO₂ and sustainability trade-offs for the presentation | both | 🟡 |
 | 5-minute presentation | both | 🟡 |
