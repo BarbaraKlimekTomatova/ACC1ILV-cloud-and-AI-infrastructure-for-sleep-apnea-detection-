@@ -59,12 +59,6 @@ The `apnea-detector` reads `carbon-signal` and keeps the newest carbon mode and 
 ## Postcondition
 The night is in `raw_nights`, every urgent alert is in `alerts` within seconds, and the result with AHI, severity, summary and CO₂ is in `results`.
 
-## Implementation status
-- **In the code:** device-simulator, `alert-check`, `alert-service`, the carbon-aware analysis (accurate / fast / pause), the CO₂ estimate, `ahi-triage` with the LLM summary.
-- **To do so that the code matches this diagram:**
-  - the apnea-detector still has its own alert loop (consumer group `apnea-alerts`) that also sends to `alerts`. It has to become a store loop that only saves `raw_nights` (group `apnea-raw-store`), so `alert-check` is the only alert path;
-  - the detector still uses only the model built into its image; it has to load the newest approved model from `model_versions` (see UC7).
-
 ## Sequence diagram
 
 ![AB_UC1-UC3_process-one-night](AB_UC1-UC3_process-one-night.png)

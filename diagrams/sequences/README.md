@@ -1,10 +1,7 @@
 # Sequence diagrams
 
 One sequence diagram per scenario, in PlantUML. Every diagram has its own description (`.md`):
-actors, trigger, main flow with the step numbers of the diagram, alternative flows and an
-**Implementation status** (what is already in the code and what is still to do).
-The diagrams show the system **after the fixes from the checkpoint feedback**; the
-Implementation status says which parts are not in the code yet.
+actors, trigger, main flow with the step numbers of the diagram, alternative flows and the postcondition.
 
 | Use cases | Scenario | Description | Diagram | Author |
 | --- | --- | --- | --- | --- |
