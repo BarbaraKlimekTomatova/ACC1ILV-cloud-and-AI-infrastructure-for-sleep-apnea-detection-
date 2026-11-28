@@ -1,6 +1,6 @@
 # model-trainer
 
-UC7 ([Retrain model](../../diagrams/sequences/10.11_B_UC7-retrain-model_v1.md)),
+UC7 ([Retrain model](../../diagrams/sequences/B_UC7-retrain-model.md)),
 [ADR 0005](../../ADR/0005-model-lifecycle-carbon-aware-retraining.md). Owner: Barbara.
 Runs as a Kubernetes CronJob (Sunday 02:00), not as a long-running service.
 

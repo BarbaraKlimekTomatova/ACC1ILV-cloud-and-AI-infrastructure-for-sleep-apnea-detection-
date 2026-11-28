@@ -1,0 +1,86 @@
+@startuml B_UC6-monitor-system-and-footprint
+skinparam dpi 200
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam sequenceMessageAlign center
+skinparam ArrowColor #444444
+skinparam sequence {
+  LifeLineBorderColor #BBBBBB
+  ParticipantBorderColor #666666
+  ParticipantBackgroundColor #FFFFFF
+  ActorBorderColor #666666
+  ActorBackgroundColor #FFFFFF
+  GroupBorderColor #999999
+}
+skinparam database {
+  BorderColor #666666
+  BackgroundColor #FFFFFF
+}
+skinparam queue {
+  BorderColor #666666
+  BackgroundColor #FEF3C7
+}
+skinparam note {
+  BorderColor #BBBBBB
+  BackgroundColor #FFFFFF
+}
+hide footbox
+autonumber
+title UC6 – Monitor system and footprint
+
+actor "Operator / Team" as OP
+participant "apnea-detector\n/metrics :8000" as DET
+participant "ahi-triage\n/metrics :8001" as TRI
+participant "Kafka exporter\n/metrics" as KE
+participant "Prometheus" as PROM
+participant "Grafana" as GRAF
+participant "Kubernetes API" as K8S
+
+loop every 15 s
+  PROM -> DET : GET /metrics
+  activate DET
+  DET --> PROM : minutes per model and event, confidence,\npaused, carbon intensity, gCO2
+  deactivate DET
+  PROM -> TRI : GET /metrics
+  activate TRI
+  TRI --> PROM : nights per severity, AHI,\ndeadlines missed, LLM gCO2
+  deactivate TRI
+  PROM -> KE : GET /metrics
+  activate KE
+  KE --> PROM : consumer lag per group\n(minutes waiting in Kafka)
+  deactivate KE
+  PROM -> PROM : store the time series
+end
+note over DET, KE : alert-check, alert-service and carbon-scheduler\noffer /metrics in the same way (ports 8002–8004)
+
+OP -> GRAF : open the dashboards
+activate GRAF
+GRAF -> PROM : PromQL queries
+activate PROM
+PROM --> GRAF : time series
+deactivate PROM
+GRAF -> GRAF : draw the panels
+GRAF --> OP : "System health" and "AI & carbon"
+deactivate GRAF
+
+loop every minute
+  PROM -> PROM : evaluate the alert rules
+  opt AI behaviour drifts (events per hour or confidence\nvery different from last week)
+    PROM -> OP : warning: model drift
+    OP -> K8S : create Job from CronJob model-trainer\n(triggered_by = drift)
+    activate K8S
+    K8S --> OP : Job created (continues in UC7)
+    deactivate K8S
+  end
+  opt a service does not answer (up = 0),\na deadline is missed or the Kafka lag grows
+    PROM -> OP : warning: system health
+  end
+end
+
+legend bottom right
+  ->>  asynchronous message (Kafka topic)
+  ->   synchronous call (SQL, HTTP, Kubernetes API)
+  -->  reply
+endlegend
+@enduml
