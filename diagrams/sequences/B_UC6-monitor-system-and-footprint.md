@@ -30,10 +30,6 @@ Use cases overview: [README](../../README.md#use-cases) · All sequence diagrams
 ## Postcondition
 The team knows the state of the system and of the AI, and reacts to drift with a new training.
 
-## Implementation status
-- **In the code:** `/metrics` in apnea-detector, ahi-triage, alert-check, alert-service and carbon-scheduler; Prometheus rules with tests; the Grafana dashboard "AI & carbon".
-- **To do so that the code matches this diagram:** the Kafka exporter (steps 5–6), Prometheus and Grafana in the cluster, the Grafana dashboard "System health".
-
 ## Sequence diagram
 
 ![B_UC6-monitor-system-and-footprint](B_UC6-monitor-system-and-footprint.png)

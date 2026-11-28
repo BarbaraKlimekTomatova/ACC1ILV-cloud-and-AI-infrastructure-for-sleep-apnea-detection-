@@ -33,10 +33,6 @@ Login for doctors, sending the report to the patient.
 ## Postcondition
 Every reviewed result has at least one row in `decisions`; the final severity is the doctor's.
 
-## Implementation status
-- **In the code:** the tables `patients`, `results`, `raw_nights`, `alerts`, `decisions` and the DB user of the dashboard.
-- **To do so that the code matches this diagram:** the `doctor-dashboard` itself (`services/doctor-dashboard/` is still empty), its Dockerfile and its Kubernetes Deployment.
-
 ## Sequence diagram
 
 ![A_UC4-review-a-result](A_UC4-review-a-result.png)

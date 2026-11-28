@@ -32,13 +32,6 @@ Doctor corrections from `decisions` are not used for training yet (`doctor_corre
 ## Postcondition
 A new row in `model_versions` with F1 and CO₂. If it is `approved`, the detector uses it within 5 minutes and every new result in `results` stores this `model_version`.
 
-## Implementation status
-- **In the code:** `train.py` (features, training, F1, CodeCarbon, `model_versions` row), `gate.py`, the F1 gate in GitHub Actions, the CronJob.
-- **To do so that the code matches this diagram:**
-  - save the model file in `model_versions.artifact` and run `gate.py` in the same Job (today the gate runs only in CI, so on Kubernetes a version stays `pending`);
-  - the model loop in the apnea-detector (today it uses only the model built into its image);
-  - the start of the Job by the carbon-scheduler (UC5) instead of the Sunday CronJob that waits up to 6 h for `low_carbon`.
-
 ## Sequence diagram
 
 ![B_UC7-retrain-model](B_UC7-retrain-model.png)
