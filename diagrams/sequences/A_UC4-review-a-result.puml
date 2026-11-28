@@ -1,0 +1,84 @@
+@startuml A_UC4-review-a-result
+skinparam dpi 200
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam sequenceMessageAlign center
+skinparam ArrowColor #444444
+skinparam sequence {
+  LifeLineBorderColor #BBBBBB
+  ParticipantBorderColor #666666
+  ParticipantBackgroundColor #FFFFFF
+  ActorBorderColor #666666
+  ActorBackgroundColor #FFFFFF
+  GroupBorderColor #999999
+}
+skinparam database {
+  BorderColor #666666
+  BackgroundColor #FFFFFF
+}
+skinparam queue {
+  BorderColor #666666
+  BackgroundColor #FEF3C7
+}
+skinparam note {
+  BorderColor #BBBBBB
+  BackgroundColor #FFFFFF
+}
+hide footbox
+autonumber
+title UC4 – Review and approve a result
+
+actor "Doctor" as DOC
+participant "doctor-dashboard\n(Streamlit)" as DASH
+database "PostgreSQL" as DB
+
+DOC -> DASH : open the dashboard (HTTP)
+activate DASH
+DASH -> DB : SELECT patients, their newest results,\nalerts and decisions
+activate DB
+DB --> DASH : rows
+deactivate DB
+DASH -> DASH : sort by severity (severe first),\nmark nights with alerts or without a decision
+DASH --> DOC : patient list, most severe first
+deactivate DASH
+
+DOC -> DASH : open the report of one night
+activate DASH
+DASH -> DB : SELECT result of the night\n(AHI, severity, model, llm_summary)
+activate DB
+DB --> DASH : result
+deactivate DB
+DASH -> DB : SELECT raw_nights.spo2 and alerts of the night
+activate DB
+DB --> DASH : SpO2 per second, alert minutes
+deactivate DB
+DASH -> DB : SELECT AHI of the patient's earlier nights
+activate DB
+DB --> DASH : AHI per night
+deactivate DB
+DASH -> DASH : draw the SpO2 chart (alert minutes marked)\nand the AHI trend
+DASH --> DOC : report: AHI, severity, summary, charts
+deactivate DASH
+
+alt the doctor agrees
+  DOC -> DASH : approve
+  activate DASH
+  DASH -> DB : INSERT decisions\n(result_id, doctor, action = approve)
+else the doctor disagrees (A1)
+  DOC -> DASH : correct the severity (+ comment)
+  DASH -> DB : INSERT decisions (result_id, doctor, action = correct,\ncorrected_severity, comment)
+end
+activate DB
+DB --> DASH : decision_id
+deactivate DB
+DASH -> DASH : mark the night as reviewed
+DASH --> DOC : saved, back to the patient list
+deactivate DASH
+
+legend bottom right
+  ->>  asynchronous message (Kafka topic)
+  ->   synchronous call (SQL, HTTP, Kubernetes API)
+  -->  reply
+endlegend
+@enduml

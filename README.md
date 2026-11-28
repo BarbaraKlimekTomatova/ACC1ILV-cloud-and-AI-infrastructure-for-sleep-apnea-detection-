@@ -90,7 +90,7 @@ After the checkpoint 1 feedback we are redrawing all diagrams in **PlantUML** wi
 
 - use case diagram (actors and use cases) – [`diagrams/usecases/`](diagrams/usecases/10.11_B_use-cases_v1.md)
 - database schema (ER diagram) – `diagrams/db_schema/`, described in [doc/database-tables.md](doc/database-tables.md)
-- one sequence diagram for each use case, with its description – [`diagrams/sequences/`](diagrams/sequences/)
+- sequence diagrams of all use cases (UC1–UC3 in one), each with its description – [`diagrams/sequences/`](diagrams/sequences/README.md)
 - one class diagram for each service – [`diagrams/classes/`](diagrams/classes/README.md)
 - architecture overview: data flow of one night – [`diagrams/overview/`](diagrams/overview/README.md)
 - component diagram with interfaces (UML ball-and-socket) – [`diagrams/components/`](diagrams/components/README.md)
@@ -105,7 +105,7 @@ one kind of our diagrams:
 | --- | --- | --- |
 | **Scenarios (+1)** | what the users and actors do with the system | use case diagram UC1–UC7 ([`diagrams/usecases/`](diagrams/usecases/10.11_B_use-cases_v1.md)) |
 | **Logical** | the parts of the system and their interfaces | component diagram ([`diagrams/components/`](diagrams/components/README.md)), ER diagram of the data ([`diagrams/db_schema/`](diagrams/db_schema/)) |
-| **Process** | what runs at the same time and how it talks (Kafka, calls) | data flow of one night ([`diagrams/overview/`](diagrams/overview/README.md)), one sequence diagram per use case ([`diagrams/sequences/`](diagrams/sequences/)) |
+| **Process** | what runs at the same time and how it talks (Kafka, calls) | data flow of one night ([`diagrams/overview/`](diagrams/overview/README.md)), sequence diagrams of the use cases ([`diagrams/sequences/`](diagrams/sequences/README.md)) |
 | **Development** | the code: modules, classes, packages | class diagrams per service ([`diagrams/classes/`](diagrams/classes/README.md)) |
 | **Physical** | where it runs: Kubernetes nodes, regions AT / NO / PL, pods, CI/CD | deployment diagram (to do), manifests in [`k8s/`](k8s/README.md) |
 
@@ -129,7 +129,7 @@ Setup, Kubernetes on kind, docker compose and tests: see **[RUN.md](RUN.md)**.
 ```
 ADR/                 architecture decision records
 diagrams/usecases/   use case diagram (PlantUML)
-diagrams/sequences/  one file per use case: description + sequence diagram (PlantUML)
+diagrams/sequences/  sequence diagrams (PlantUML) + descriptions, overview in README.md
 diagrams/classes/    one class diagram per service + services/common (PlantUML)
 diagrams/overview/   architecture overview: data flow of one night (PlantUML)
 diagrams/components/ component diagram with interfaces (PlantUML)
@@ -167,8 +167,8 @@ flow). Next: CI for the new services, the K8s base (Kafka, PostgreSQL), dashboar
 | ADR 0010 (how we measure CO₂), 0011 (open PhysioNet data), 0012 (at-least-once delivery, idempotent consumers), 0013 (model file inside the detector image), 0014 (container registry and CD) | Aliénor | 🟡 |
 | Use case diagram | both | ✅ |
 | Database schema (ER diagram) + [doc/database-tables.md](doc/database-tables.md) | both | ✅ |
-| Sequence diagrams UC2, UC6, UC7 ([`diagrams/sequences/`](diagrams/sequences/)) | Barbara | ✅ |
-| Sequence diagrams UC1, UC3, UC4 ✅ done, UC5 🟡 to do | Aliénor | 🟡 |
+| Sequence diagrams UC1–UC3 (one diagram), UC6, UC7 ([`diagrams/sequences/`](diagrams/sequences/README.md)) | both / Barbara | ✅ |
+| Sequence diagrams UC4, UC5 ([`diagrams/sequences/`](diagrams/sequences/README.md)) | Aliénor | ✅ |
 | Class diagrams of apnea-detector, ahi-triage, model-trainer ([`diagrams/classes/`](diagrams/classes/README.md)) | Barbara | ✅ |
 | Class diagrams of device-simulator, alert-service, carbon-scheduler, doctor-dashboard | Aliénor | 🟡 |
 | Common class diagram ([`class-common`](diagrams/classes/24.11_B_class-common_v1.puml): `features.py`, `fast_model.py`) | Barbara | ✅ |
@@ -280,7 +280,7 @@ Both of us work on every criterion. ✅ / 🟡 as in the tables above.
 
 | Criterion (weight) | Barbara | Aliénor |
 | --- | --- | --- |
-| Architecture, ADRs, UML diagrams (25 %) | ADRs 0001–0009 and use cases together ✅, sequence diagrams UC2, UC6, UC7 ✅, ER diagram together ✅, class diagrams of her 3 services ✅, common class diagram ✅, component diagram together ✅, C4 / 4+1 table together ✅ | ADRs 0001–0009 and use cases together ✅, ADR 0010–0014 🟡, sequence diagrams UC1, UC3, UC4 ✅, sequence diagram UC5 🟡, ER diagram together ✅, class diagrams of her services 🟡, deployment diagram 🟡, component diagram together ✅, C4 / 4+1 table together ✅ |
+| Architecture, ADRs, UML diagrams (25 %) | ADRs 0001–0009 and use cases together ✅, sequence diagrams UC1–UC3 together, UC6, UC7 ✅, ER diagram together ✅, class diagrams of her 3 services ✅, common class diagram ✅, component diagram together ✅, C4 / 4+1 table together ✅ | ADRs 0001–0009 and use cases together ✅, ADR 0010–0014 🟡, sequence diagrams UC1–UC3 together, UC4, UC5 ✅, ER diagram together ✅, class diagrams of her services 🟡, deployment diagram 🟡, component diagram together ✅, C4 / 4+1 table together ✅ |
 | Code (15 %) | `apnea-detector` with alert-check ✅, `ahi-triage` ✅, `model-trainer` + F1 gate ✅, shared `features.py` ✅, LLM summary ✅, `carbon_wait.py` ✅ | message builders ✅, `device-simulator` ✅, `alert-check` ✅, `alert-service` ✅, `carbon-scheduler` ✅, `doctor-dashboard` 🟡 |
 | Data handling (10 %) | data pipeline (download, clean, splits) ✅, tables `raw_nights`, `results`, `model_versions` ✅, topics `apnea-events`, `night-results` ✅ | tables `patients`, `alerts`, `decisions`, `carbon_decisions` and DB users ✅, topics `raw-signals`, `alerts`, `carbon-signal` ✅, `docker-compose.yml` ✅, pipeline walkthrough notebook ✅, data privacy and retention 🟡 |
 | AI model (10 %) | features ✅, accurate model (F1 0.906) ✅, retraining (UC7) ✅, LLM summary with a local model ✅ | fast model as a rule (F1 0.832) ✅, model comparison script 🟡 |

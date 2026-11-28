@@ -1,7 +1,7 @@
 # Monitoring (UC6)
 
 Prometheus reads `/metrics` of the services every 15 s, Grafana shows the dashboards, the alert rules warn the team
-([UC6](../diagrams/sequences/22.11_B_UC6-monitor-system-and-footprint_v1.md), [ADR 0006](../ADR/0006-monitoring-system-and-ai-behaviour.md)).
+([UC6](../diagrams/sequences/B_UC6-monitor-system-and-footprint.md), [ADR 0006](../ADR/0006-monitoring-system-and-ai-behaviour.md)).
 
 ```
 monitoring/

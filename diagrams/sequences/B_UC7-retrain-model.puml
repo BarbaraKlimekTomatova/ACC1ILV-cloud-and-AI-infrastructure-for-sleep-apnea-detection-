@@ -1,0 +1,102 @@
+@startuml B_UC7-retrain-model
+skinparam dpi 200
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam sequenceMessageAlign center
+skinparam ArrowColor #444444
+skinparam sequence {
+  LifeLineBorderColor #BBBBBB
+  ParticipantBorderColor #666666
+  ParticipantBackgroundColor #FFFFFF
+  ActorBorderColor #666666
+  ActorBackgroundColor #FFFFFF
+  GroupBorderColor #999999
+}
+skinparam database {
+  BorderColor #666666
+  BackgroundColor #FFFFFF
+}
+skinparam queue {
+  BorderColor #666666
+  BackgroundColor #FEF3C7
+}
+skinparam note {
+  BorderColor #BBBBBB
+  BackgroundColor #FFFFFF
+}
+hide footbox
+autonumber
+title UC7 – Retrain the model and hand it to the detector
+
+participant "carbon-scheduler\n(UC5)" as SCH
+actor "Operator / Team" as OP
+participant "Kubernetes API" as K8S
+participant "model-trainer\n(Job: train.py)" as TR
+participant "F1 gate\n(gate.py, same Job)" as GATE
+database "PostgreSQL" as DB
+participant "apnea-detector\n(model loop)" as DET
+
+alt triggered_by = schedule
+  SCH -> K8S : create Job from CronJob model-trainer\n(low_carbon window, training due)
+else triggered_by = manual or drift (UC6)
+  OP -> K8S : create Job from CronJob model-trainer
+end
+activate K8S
+K8S -> TR : start the Job
+deactivate K8S
+activate TR
+
+TR -> DB : SELECT versions in model_versions
+activate DB
+DB --> TR : existing versions
+deactivate DB
+TR -> TR : next version (accurate-vN)
+TR -> TR : load the training nights (data/clean/)
+TR -> TR : build the features (services/common,\nthe same code as the detector, ADR 0008)
+TR -> TR : train gradient boosting\n(CodeCarbon measures kWh and gCO2)
+TR -> TR : F1, precision, recall\non the held-out nights
+TR -> DB : INSERT model_versions (status = pending,\nF1, kWh, gCO2, model file in artifact)
+activate DB
+DB --> TR : ok
+deactivate DB
+TR --> K8S : exit 0
+deactivate TR
+
+K8S -> GATE : run gate.py
+activate GATE
+GATE -> DB : newest pending version and\nF1 of the approved model
+activate DB
+DB --> GATE : F1 new, F1 current
+deactivate DB
+GATE -> GATE : F1 ≥ 0.80 and\nnot worse than the current model?
+alt yes
+  GATE -> DB : UPDATE status = approved
+else no (A1)
+  GATE -> DB : UPDATE status = rejected
+end
+activate DB
+DB --> GATE : ok
+deactivate DB
+GATE --> K8S : Job done
+deactivate GATE
+
+loop every MODEL_CHECK_S (300 s)
+  DET -> DB : newest approved accurate model
+  activate DET
+  activate DB
+  DB --> DET : version, artifact
+  deactivate DB
+  opt new version
+    DET -> DET : check the feature list, load the model
+    DET -> DET : use it for the next minutes
+  end
+  deactivate DET
+end
+
+legend bottom right
+  ->>  asynchronous message (Kafka topic)
+  ->   synchronous call (SQL, HTTP, Kubernetes API)
+  -->  reply
+endlegend
+@enduml

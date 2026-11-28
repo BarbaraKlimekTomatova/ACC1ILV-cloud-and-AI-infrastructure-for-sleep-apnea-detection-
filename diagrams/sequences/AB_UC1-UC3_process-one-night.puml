@@ -1,0 +1,142 @@
+@startuml AB_UC1-UC3_process-one-night
+skinparam dpi 200
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam sequenceMessageAlign center
+skinparam ArrowColor #444444
+skinparam sequence {
+  LifeLineBorderColor #BBBBBB
+  ParticipantBorderColor #666666
+  ParticipantBackgroundColor #FFFFFF
+  ActorBorderColor #666666
+  ActorBackgroundColor #FFFFFF
+  GroupBorderColor #999999
+}
+skinparam database {
+  BorderColor #666666
+  BackgroundColor #FFFFFF
+}
+skinparam queue {
+  BorderColor #666666
+  BackgroundColor #FEF3C7
+}
+skinparam note {
+  BorderColor #BBBBBB
+  BackgroundColor #FFFFFF
+}
+hide footbox
+autonumber
+title UC1–UC3 – Process one night (upload, screen, urgent alert)
+
+participant "device-simulator\n(home device)" as SIM
+queue "raw-signals" as RS
+participant "alert-check" as ACK
+queue "alerts" as ALT
+participant "alert-service" as ASV
+participant "apnea-detector" as DET
+queue "carbon-signal" as CS
+queue "apnea-events" as AE
+participant "ahi-triage" as TRI
+participant "Ollama\n(local LLM)" as LLM
+database "PostgreSQL" as DB
+queue "night-results" as NR
+
+CS ->> DET : carbon mode, region, intensity\n(when it changes, UC5)
+activate DET
+DET -> DET : keep the newest carbon mode
+deactivate DET
+
+loop every minute of the night
+  SIM -> SIM : read the next minute of the night
+  SIM ->> RS : raw-signals (key = patient_id;\nspo2, flow, thorax, abdomen)
+
+  par UC1 – store the raw minute (group apnea-raw-store, never paused)
+    RS ->> DET : minute
+    activate DET
+    DET -> DET : check the JSON schema
+    opt first minute of the night
+      DET -> DB : INSERT raw_nights row
+      activate DB
+      DB --> DET : ok
+      deactivate DB
+    end
+    DET -> DB : append the minute to raw_nights
+    activate DB
+    DB --> DET : ok
+    deactivate DB
+    deactivate DET
+
+  else UC3 – urgent alert (group alert-check, never paused, ADR 0002)
+    RS ->> ACK : minute
+    activate ACK
+    ACK -> ACK : lowest valid SpO2\n(< 50 % = sensor artefact)
+    opt SpO2 < 80 %
+      ACK ->> ALT : alert (night, minute, spo2_min, detected_at)
+      ALT ->> ASV : alert
+      activate ASV
+      ASV -> DB : INSERT alerts (same night + minute only once;\nretry up to 60 s until the raw_nights row exists)
+      activate DB
+      DB --> ASV : stored_at
+      deactivate DB
+      ASV -> ASV : latency = stored_at − detected_at (< 5 s)
+      deactivate ASV
+    end
+    deactivate ACK
+
+  else UC2 – screen the minute (group apnea-detector, carbon-aware, ADR 0003)
+    activate DET
+    DET -> DET : decide(carbon mode, time to 08:00)
+    alt low_carbon
+      RS ->> DET : minute
+      DET -> DET : NightFeatures + accurate model\n(newest approved model, UC7)
+      DET ->> AE : event of the minute
+    else high_carbon, 08:00 is far (A1)
+      DET -> DET : pause the consumer,\nthe minute waits in Kafka
+    else high_carbon, 08:00 is close or the night is late (A2)
+      RS ->> DET : minute
+      DET -> DET : NightFeatures + fast model (rule-v1)
+      DET ->> AE : event of the minute
+    end
+    opt is_last
+      DET -> DET : kWh, gCO2 of the night\n(CPU time × CPU_WATTS × intensity)
+    end
+    deactivate DET
+    AE ->> TRI : event of the minute
+    activate TRI
+    TRI -> TRI : add the event to the night
+    deactivate TRI
+  end
+end
+
+group UC2 – result of the night (after the last minute, is_last)
+  activate TRI
+  TRI -> DB : is this night already in results?
+  activate DB
+  DB --> TRI : no
+  deactivate DB
+  TRI -> TRI : AHI = events / hours,\nseverity, deadline_met
+  TRI -> LLM : POST /api/generate (AHI, severity, events)
+  activate LLM
+  alt the LLM answers
+    LLM --> TRI : short summary for the doctor
+    TRI -> TRI : llm_gco2 of the summary
+  else no answer (A4)
+    LLM --> TRI : error or timeout
+    TRI -> TRI : result without summary
+  end
+  deactivate LLM
+  TRI -> DB : INSERT results (AHI, severity, model,\nmodel_version, kWh, gCO2, llm_summary)
+  activate DB
+  DB --> TRI : result_id
+  deactivate DB
+  TRI ->> NR : night result (the dashboard shows it, UC4)
+  deactivate TRI
+end
+
+legend bottom right
+  ->>  asynchronous message (Kafka topic)
+  ->   synchronous call (SQL, HTTP, Kubernetes API)
+  -->  reply
+endlegend
+@enduml
